@@ -4,5 +4,5 @@
   "pause-period": 0,
   "number-of-message-blocks": 10,
   "number-of-frequencies": 16,
-  "space-between-frequencies": 100
+  "space-between-frequencies": 200
 }
