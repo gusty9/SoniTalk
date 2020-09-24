@@ -25,8 +25,8 @@ import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.media.audiofx.LoudnessEnhancer;
 import android.os.Build;
-import android.support.annotation.IntDef;
-import android.support.annotation.NonNull;
+import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
 import android.util.Log;
 
 import java.lang.annotation.Retention;
