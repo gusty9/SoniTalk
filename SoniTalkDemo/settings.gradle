@@ -1,3 +1,5 @@
 include ':app'
 include ':sonitalk-sdk'
 project(':sonitalk-sdk').projectDir = new File('../SoniTalk/sonitalk-sdk')
+include ':aturfcrypto'
+project(':aturfcrypto').projectDir = new File('../aturfcrypto')
