@@ -561,7 +561,7 @@ public class MainActivity extends BaseActivity implements SoniTalkDecoder.Messag
                     // Stops recording if needed and shows a Toast
                     if (!silentMode) {
                         // STOP everything.
-                        stopDecoder();
+                        //stopDecoder();
                         //                        currentToast = Toast.makeText(MainActivity.this, "Correctly received a message. Stopped.", Toast.LENGTH_SHORT);
                         //                        currentToast.show();
                     } else {
