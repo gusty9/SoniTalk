@@ -21,6 +21,7 @@ package at.ac.fhstp.sonitalk;
 
 import org.apache.commons.lang3.ArrayUtils;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 
 import at.ac.fhstp.sonitalk.utils.CRC;
@@ -73,10 +74,18 @@ public class SoniTalkEncoder {
     /**
      * Encodes a byte array of data using the configuration specified in the constructor.
      * The SoniTalkMessage returned can then be send via a SoniTalkSender object.
-     * @param data to be encoded
+     * @param msg the hex String to be encoded
+     *              msg.length === 32
+     *              for all char in the string must be a hex value (0-9, A-F)
      * @return a SoniTalkMessage containing the encoded data to be sent via a SoniTalkSender
      */
-    public SoniTalkMessage generateMessage(byte[] data) {
+    public SoniTalkMessage generateMessage(String msg) {
+        //make sure the user is sending proper length id
+        if (msg.length() != 32) {
+            System.err.println("Error. Message must be 32 length hex string");
+        }
+        msg = msg.toUpperCase(); //ensure that our ID is always uppercase on sending and receiving
+        final byte[] data = new BigInteger(msg, 16).toByteArray();
         SoniTalkMessage message = new SoniTalkMessage(data);
         short[] generatedSignal = encode(data);
         message.setRawAudio(generatedSignal);

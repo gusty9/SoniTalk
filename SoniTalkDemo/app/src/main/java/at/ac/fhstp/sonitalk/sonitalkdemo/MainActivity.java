@@ -68,6 +68,7 @@ import at.ac.fhstp.sonitalk.exceptions.DecoderStateException;
 import at.ac.fhstp.sonitalk.utils.ConfigFactory;
 import at.ac.fhstp.sonitalk.utils.DecoderUtils;
 import at.ac.fhstp.sonitalk.utils.EncoderUtils;
+import at.ac.fhstp.sonitalk.utils.ID;
 
 import static android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS;
 import static at.ac.fhstp.sonitalk.utils.EncoderUtils.calculateNumberOfMessageBlocks;
@@ -304,7 +305,9 @@ public class MainActivity extends BaseActivity implements SoniTalkDecoder.Messag
             threadPool.execute(new Runnable() {
                 @Override
                 public void run() {
-                    currentMessage = soniTalkEncoder.generateMessage(bytes);
+                    String id = ID.generateRandomID();
+                    edtSignalText.setText(id);
+                    currentMessage = soniTalkEncoder.generateMessage(id);
                     sendMessage();
                 }
             });
@@ -526,13 +529,6 @@ public class MainActivity extends BaseActivity implements SoniTalkDecoder.Messag
         long timeNow = System.nanoTime();
         Log.d(TAG, "onMessageReceived: " + timeNow);
         Log.d(TAG, "onMessageReceived: " + timeLastCorrectMessageReceived);
-        StringBuilder sb = new StringBuilder();
-        int mask = 0xFF;
-        byte[] b = receivedMessage.getMessage();
-        for (int i = 0; i < b.length; i++) {
-            sb.append(Integer.toString(b[i] & mask, 16));
-        }
-        final String msg = sb.toString();
 
         // Only check the content if we did not receive the correct message in the last INTERVAL_SAME_MESSAGE
         if (timeNow > timeLastCorrectMessageReceived + INTERVAL_SAME_MESSAGE) {
@@ -549,7 +545,7 @@ public class MainActivity extends BaseActivity implements SoniTalkDecoder.Messag
             if (receivedMessage.isCrcCorrect()) {
                 //Log.d("ParityCheck", "The message was correctly received");
                 timeLastCorrectMessageReceived = timeNow;
-                final String textReceived = DecoderUtils.byteToUTF8(receivedMessage.getMessage());
+                //final String textReceived = DecoderUtils.byteToUTF8(receivedMessage.getMessage());
                 //Log.d("Received message", textReceived);
 
                 // We stop when CRC is correct and we are not in silent mode
@@ -558,7 +554,7 @@ public class MainActivity extends BaseActivity implements SoniTalkDecoder.Messag
                     public void run() {
                         // Update text displayed
                         //setReceivedText(textReceived + " (" + String.valueOf(receivedMessage.getDecodingTimeNanosecond() / 1000000) + "ms)");
-                        setReceivedText(msg + " (" + String.valueOf(receivedMessage.getDecodingTimeNanosecond() / 1000000) + "ms)");
+                        setReceivedText(receivedMessage.getHexString() + " (" + String.valueOf(receivedMessage.getDecodingTimeNanosecond() / 1000000) + "ms)");
 
                         if (currentToast != null) {
                             currentToast.cancel(); // NOTE: Cancel so fast that only the last one in a series really is displayed.

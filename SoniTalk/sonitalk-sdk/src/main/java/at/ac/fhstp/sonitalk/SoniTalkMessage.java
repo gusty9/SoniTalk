@@ -93,6 +93,20 @@ public class SoniTalkMessage {
     }
 
     /**
+     * returns the data array as a hex string representation
+     * @return
+     *      The data in the byte array message represented as a hex string
+     */
+    public String getHexString() {
+        StringBuilder sb = new StringBuilder();
+        int mask = 0xFF; // used to convert the bytes to unsigned bytes (-128,128) -> (0,256)
+        for (int i = 0; i < message.length; i++) {
+            sb.append(Integer.toString(message[i] & mask, 16));
+        }
+        return sb.toString().toUpperCase();
+    }
+
+    /**
      * returns the raw audio signal (after generation for sending or after receiving)
      * PLEASE DO NOT MAKE PUBLIC
      * @return the audio signal corresponding to this message
