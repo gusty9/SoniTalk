@@ -41,6 +41,7 @@ import at.ac.fhstp.sonitalk.utils.CircularArray;
 import at.ac.fhstp.sonitalk.utils.ConfigConstants;
 import at.ac.fhstp.sonitalk.utils.DecoderUtils;
 import at.ac.fhstp.sonitalk.utils.HammingWindow;
+import at.ac.fhstp.sonitalk.utils.RSUtils;
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D;
 import marytts.util.math.ComplexArray;
 import marytts.util.math.Hilbert;
@@ -821,14 +822,12 @@ public class SoniTalkDecoder {
         String decodedBitSequence = Arrays.toString(messageDecodedBySpec).replace(", ", "").replace("[","").replace("]","");
         String bitSequenceWithoutFillingAndCRC = DecoderUtils.removeFillingCharsAndCRCChars(decodedBitSequence, ConfigConstants.GENERATOR_POLYNOM.length);
         final byte[] receivedMessage = DecoderUtils.binaryToBytes(bitSequenceWithoutFillingAndCRC);
-        Log.e("test", Arrays.toString(receivedMessage));
 
         final long decodingTimeNanosecond = System.nanoTime()-readTimestamp;
         //Log.d("Timing", "From read to received message: " + String.valueOf((decodingTimeNanosecond)/1000000) + "ms. CRC: " + String.valueOf(parityCheckResult));
 
         SoniTalkMessage message = new SoniTalkMessage(receivedMessage, parityCheckResult == 0, decodingTimeNanosecond);
-        String m = message.getHexString();
-        Log.e("test", m);
+
         if (returnsRawAudio()) {
             message.setRawAudio(convertFloatToShort(analysisHistoryBuffer));
         }

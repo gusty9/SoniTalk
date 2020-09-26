@@ -19,7 +19,11 @@
 
 package at.ac.fhstp.sonitalk;
 
+import android.util.Log;
+
 import java.util.Arrays;
+
+import at.ac.fhstp.sonitalk.utils.RSUtils;
 
 /**
  * Wrapper class for messages (received or to be sent).
@@ -108,6 +112,17 @@ public class SoniTalkMessage {
             sb.append(temp);
         }
         return sb.toString().toUpperCase();
+    }
+
+    /**
+     * Returns hex message after the reed solomon code has been decoded
+     * @return
+     */
+    public String getDecodedMessage() {
+        String hex = getHexString();
+        String msg = hex.substring(4);
+        String verify = hex.substring(0,4);
+        return RSUtils.Decode(msg, verify);
     }
 
     /**
