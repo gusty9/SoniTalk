@@ -45,6 +45,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -52,6 +53,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import at.ac.fhstp.sonitalk.SoniTalkConfig;
@@ -263,7 +265,13 @@ public class MainActivity extends BaseActivity implements SoniTalkDecoder.Messag
         soniTalkEncoder = soniTalkContext.getEncoder(config);
 
         //final String textToSend = sp.getString(ConfigConstants.SIGNAL_TEXT,"Hallo Sonitalk");
-        final String textToSend = edtSignalText.getText().toString();
+        //final String textToSend = edtSignalText.getText().toString();
+        final String textToSend = "5BF689A62F6A5257DC5EEE226B1B0821";
+        final byte[] bytes = new BigInteger(textToSend, 16).toByteArray();
+        Log.e("test", Arrays.toString(bytes));
+
+        int mask = 0xFF;
+
         //Log.d("changeToBitStringUTF8",String.valueOf(isUTF8MisInterpreted(textToSend, "Windows-1252")));
 
         sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
@@ -275,31 +283,31 @@ public class MainActivity extends BaseActivity implements SoniTalkDecoder.Messag
 
         if(sp.getString(ConfigConstants.TEXT_TO_SEND,"Hallo SoniTalk").equals(textToSend) && currentMessage != null){
             sendMessage();
-        }else {
+        } else {
             SharedPreferences.Editor ed = sp.edit();
             ed.putString(ConfigConstants.TEXT_TO_SEND, textToSend);
             ed.apply();
 
-            final byte[] bytes = textToSend.getBytes(StandardCharsets.UTF_8);
 
-            if (textToSend.length() > nMaxBytes) {
-                // Too many characters
-                String tooManyCharacters = String.format(getString(R.string.encoder_exception_text_too_long), nMaxBytes);
-                Toast.makeText(getApplicationContext(), tooManyCharacters, Toast.LENGTH_LONG).show();
-            } else if(!EncoderUtils.isAllowedByteArraySize(bytes, config)){
-                // Too many bytes: muti-bytes characters and emojis require several bytes
-                String tooManyBytes = String.format(getString(R.string.encoder_exception_text_too_many_bytes), nMaxBytes);
-                Toast.makeText(getApplicationContext(), tooManyBytes, Toast.LENGTH_LONG).show();
-            } else {
-                // Move the background execution handling away from the Activity (in Encoder or Service or AsyncTask). Creating Runnables here may leak the Activity
-                threadPool.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        currentMessage = soniTalkEncoder.generateMessage(bytes);
-                        sendMessage();
-                    }
-                });
-            }
+//            if (textToSend.length() > nMaxBytes) {
+//                // Too many characters
+//                String tooManyCharacters = String.format(getString(R.string.encoder_exception_text_too_long), nMaxBytes);
+//                Toast.makeText(getApplicationContext(), tooManyCharacters, Toast.LENGTH_LONG).show();
+//            } else if(!EncoderUtils.isAllowedByteArraySize(bytes, config)){
+//                // Too many bytes: muti-bytes characters and emojis require several bytes
+//                String tooManyBytes = String.format(getString(R.string.encoder_exception_text_too_many_bytes), nMaxBytes);
+//                Toast.makeText(getApplicationContext(), tooManyBytes, Toast.LENGTH_LONG).show();
+//            } else {
+//                // Move the background execution handling away from the Activity (in Encoder or Service or AsyncTask). Creating Runnables here may leak the Activity
+//
+//            }
+            threadPool.execute(new Runnable() {
+                @Override
+                public void run() {
+                    currentMessage = soniTalkEncoder.generateMessage(bytes);
+                    sendMessage();
+                }
+            });
         }
     }
 
@@ -518,6 +526,13 @@ public class MainActivity extends BaseActivity implements SoniTalkDecoder.Messag
         long timeNow = System.nanoTime();
         Log.d(TAG, "onMessageReceived: " + timeNow);
         Log.d(TAG, "onMessageReceived: " + timeLastCorrectMessageReceived);
+        StringBuilder sb = new StringBuilder();
+        int mask = 0xFF;
+        byte[] b = receivedMessage.getMessage();
+        for (int i = 0; i < b.length; i++) {
+            sb.append(Integer.toString(b[i] & mask, 16));
+        }
+        final String msg = sb.toString();
 
         // Only check the content if we did not receive the correct message in the last INTERVAL_SAME_MESSAGE
         if (timeNow > timeLastCorrectMessageReceived + INTERVAL_SAME_MESSAGE) {
@@ -542,7 +557,8 @@ public class MainActivity extends BaseActivity implements SoniTalkDecoder.Messag
                     @Override
                     public void run() {
                         // Update text displayed
-                        setReceivedText(textReceived + " (" + String.valueOf(receivedMessage.getDecodingTimeNanosecond() / 1000000) + "ms)");
+                        //setReceivedText(textReceived + " (" + String.valueOf(receivedMessage.getDecodingTimeNanosecond() / 1000000) + "ms)");
+                        setReceivedText(msg + " (" + String.valueOf(receivedMessage.getDecodingTimeNanosecond() / 1000000) + "ms)");
 
                         if (currentToast != null) {
                             currentToast.cancel(); // NOTE: Cancel so fast that only the last one in a series really is displayed.

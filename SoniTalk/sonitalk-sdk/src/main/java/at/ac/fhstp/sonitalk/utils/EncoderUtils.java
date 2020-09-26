@@ -45,7 +45,6 @@ public class EncoderUtils {
             }
         }
 
-        CRC.countOccurrences(bitOfText,'1');
 
         byte[] outputByte = new byte[bitOfText.length()/8];
         int counter = 0;

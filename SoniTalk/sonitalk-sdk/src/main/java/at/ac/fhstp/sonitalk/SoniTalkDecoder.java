@@ -821,6 +821,7 @@ public class SoniTalkDecoder {
         String decodedBitSequence = Arrays.toString(messageDecodedBySpec).replace(", ", "").replace("[","").replace("]","");
         String bitSequenceWithoutFillingAndCRC = DecoderUtils.removeFillingCharsAndCRCChars(decodedBitSequence, ConfigConstants.GENERATOR_POLYNOM.length);
         final byte[] receivedMessage = DecoderUtils.binaryToBytes(bitSequenceWithoutFillingAndCRC);
+        Log.e("test", Arrays.toString(receivedMessage));
 
         final long decodingTimeNanosecond = System.nanoTime()-readTimestamp;
         //Log.d("Timing", "From read to received message: " + String.valueOf((decodingTimeNanosecond)/1000000) + "ms. CRC: " + String.valueOf(parityCheckResult));
