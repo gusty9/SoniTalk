@@ -99,9 +99,9 @@ public final class DecoderUtils {
         String controlFillCharacter = "00011001";
 
         //To improve: only make substring for the message it self
-        String crcString =  bitMessage.substring((bitMessage.length()-(generatorPolynomLength-1)), bitMessage.length());
+        //String crcString =  bitMessage.substring((bitMessage.length()-(generatorPolynomLength-1)), bitMessage.length());
 
-        bitMessage = bitMessage.replace(crcString, "");
+        //bitMessage = bitMessage.replace(crcString, "");
 
         for(int i = 0; i <= bitMessage.length() - 8; i+=8){
             if(bitMessage.substring(i, i+8).equals(controlFillCharacter)){

@@ -20,6 +20,8 @@
 package at.ac.fhstp.sonitalk.utils;
 
 
+import android.util.Log;
+
 import at.ac.fhstp.sonitalk.SoniTalkConfig;
 
 /**
@@ -80,12 +82,12 @@ public class EncoderUtils {
      */
     public String getStringOfEncodedBits(byte[] textToSend, SoniTalkConfig config){
         String bitOfText = changeToBitString(textToSend);
-
-        if(isAllowedByteArraySize(textToSend, config)) {
-            return bitOfText;
-        }else{
-            throw new IllegalArgumentException("Entered Message is too long");
-        }
+        return bitOfText;
+//        if(isAllowedByteArraySize(textToSend, config)) {
+//            return bitOfText;
+//        }else{
+//            throw new IllegalArgumentException("Entered Message is too long");
+//        }
     }
 
     /**

@@ -827,6 +827,8 @@ public class SoniTalkDecoder {
         //Log.d("Timing", "From read to received message: " + String.valueOf((decodingTimeNanosecond)/1000000) + "ms. CRC: " + String.valueOf(parityCheckResult));
 
         SoniTalkMessage message = new SoniTalkMessage(receivedMessage, parityCheckResult == 0, decodingTimeNanosecond);
+        String m = message.getHexString();
+        Log.e("test", m);
         if (returnsRawAudio()) {
             message.setRawAudio(convertFloatToShort(analysisHistoryBuffer));
         }

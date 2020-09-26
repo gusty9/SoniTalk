@@ -101,7 +101,11 @@ public class SoniTalkMessage {
         StringBuilder sb = new StringBuilder();
         int mask = 0xFF; // used to convert the bytes to unsigned bytes (-128,128) -> (0,256)
         for (int i = 0; i < message.length; i++) {
-            sb.append(Integer.toString(message[i] & mask, 16));
+            String temp = Integer.toString(message[i] & mask, 16);
+            if (temp.length() == 1) {
+                temp = "0" + temp;
+            }
+            sb.append(temp);
         }
         return sb.toString().toUpperCase();
     }

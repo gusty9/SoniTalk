@@ -211,7 +211,7 @@ public class MainActivity extends BaseActivity implements SoniTalkDecoder.Messag
         btnPlay.setImageResource(R.drawable.ic_volume_up_grey_48dp);
     }
 
-    public void sendMessage(){
+    public void sendMessage() {
         //Log.d("PlayClick","I got clicked");
 
         if (currentMessage != null) {

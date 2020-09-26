@@ -19,6 +19,8 @@
 
 package at.ac.fhstp.sonitalk;
 
+import android.util.Log;
+
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.math.BigInteger;
@@ -27,6 +29,7 @@ import java.util.Arrays;
 import at.ac.fhstp.sonitalk.utils.CRC;
 import at.ac.fhstp.sonitalk.utils.ConfigConstants;
 import at.ac.fhstp.sonitalk.utils.EncoderUtils;
+import at.ac.fhstp.sonitalk.utils.RSUtils;
 import at.ac.fhstp.sonitalk.utils.SignalGenerator;
 import at.ac.fhstp.sonitalk.utils.SignalType;
 
@@ -85,6 +88,8 @@ public class SoniTalkEncoder {
             System.err.println("Error. Message must be 32 length hex string");
         }
         msg = msg.toUpperCase(); //ensure that our ID is always uppercase on sending and receiving
+        msg = RSUtils.getEDC(msg) + msg;
+        Log.e("edc + message", msg);
         final byte[] data = new BigInteger(msg, 16).toByteArray();
         SoniTalkMessage message = new SoniTalkMessage(data);
         short[] generatedSignal = encode(data);
@@ -103,6 +108,7 @@ public class SoniTalkEncoder {
      * @return a short array with signal data
      */
     private short[] encode(byte[] data){
+        Log.e("test", "in method call");
         short[] encodedMessage = null;
         String bitOfText = encoderUtils.getStringOfEncodedBits(data, config);
         boolean doubleInverted = true;
@@ -111,7 +117,11 @@ public class SoniTalkEncoder {
         int numberOfFrequencies = config.getnFrequencies();
         int maxBytes = nMessageBlocks*(numberOfFrequencies/8) - (ConfigConstants.GENERATOR_POLYNOM.length-1) / 8;
 
-        String[] bitStringArray = createStringArrayWithParityOfBitText(bitOfText, numberOfFrequencies, maxBytes, ConfigConstants.GENERATOR_POLYNOM);
+        String[] bitStringArray = new String[bitOfText.length()];
+        for (int i = 0; i < bitOfText.length(); i++) {
+            bitStringArray[i] = Character.toString(bitOfText.charAt(i));
+        }
+        Log.e("length", "" + bitStringArray.length);
 
         int messageLength = bitStringArray.length;
         double mesLengthDividedNumFreq = Math.round(messageLength/numberOfFrequencies);
@@ -134,25 +144,23 @@ public class SoniTalkEncoder {
      * @param bitOfText The message after which the error detection code is generated.
      * @param numberOfFrequencies How many frequencies the message should use
      * @param maxBytes the maximum of bytes the message should consist of
-     * @param generatorPolynom the bit sequence for generating error detection code
      * @return the message with error detection bit sequence as string array
      */
-    private String[] createStringArrayWithParityOfBitText(String bitOfText, int numberOfFrequencies, int maxBytes, byte[] generatorPolynom){
-        int parityLength = generatorPolynom.length - 1;
-        int restModulo = (bitOfText.length() + parityLength)%numberOfFrequencies;
-
-        while(restModulo!=0 || (bitOfText.length()/8) < maxBytes){
-            bitOfText = bitOfText + ConfigConstants.CONTROL_FILLING_CHARACTER;
-            restModulo = (bitOfText.length() + parityLength)%numberOfFrequencies;
-        }
-
-        bitOfText = bitOfText + crc.parityBit(bitOfText/*, generatorPolynom*/);
-
-        String[] bitStringArray = bitOfText.split("");
-        bitStringArray = Arrays.copyOfRange(bitStringArray, 1, bitStringArray.length);
-
-        return bitStringArray;
-    }
+//    private String[] createStringArrayWithParityOfBitText(String bitOfText, int numberOfFrequencies, int maxBytes){
+//        int restModulo = (bitOfText.length() + parityLength)%numberOfFrequencies;
+//
+//        while((bitOfText.length()/8) < maxBytes){
+//            bitOfText = bitOfText + ConfigConstants.CONTROL_FILLING_CHARACTER;
+//            restModulo = (bitOfText.length() + parityLength)%numberOfFrequencies;
+//        }
+//
+//        bitOfText = bitOfText + crc.parityBit(bitOfText/*, generatorPolynom*/);
+//
+//        String[] bitStringArray = bitOfText.split("");
+//        bitStringArray = Arrays.copyOfRange(bitStringArray, 1, bitStringArray.length);
+//
+//        return bitStringArray;
+//    }
 
     /**
      * Creates a inverted version of the message.
