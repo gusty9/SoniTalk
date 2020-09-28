@@ -89,8 +89,7 @@ public class SoniTalkEncoder {
         }
         msg = msg.toUpperCase(); //ensure that our ID is always uppercase on sending and receiving
         msg = RSUtils.getEDC(msg) + msg;
-        Log.e("edc + message", msg);
-        final byte[] data = new BigInteger(msg, 16).toByteArray();
+        final byte[] data = EncoderUtils.hexStringToByteArray(msg);
         SoniTalkMessage message = new SoniTalkMessage(data);
         short[] generatedSignal = encode(data);
         message.setRawAudio(generatedSignal);
