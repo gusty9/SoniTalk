@@ -83,19 +83,9 @@ public class SoniTalkEncoder {
      * @return a SoniTalkMessage containing the encoded data to be sent via a SoniTalkSender
      */
     public SoniTalkMessage generateMessage(String msg) {
-        //make sure the user is sending proper length id
-        if (msg.length() != 32) {
-            System.err.println("Error. Message must be 32 length hex string");
-        }
-        msg = msg.toUpperCase(); //ensure that our ID is always uppercase on sending and receiving
-        msg = RSUtils.getEDC(msg) + msg;
-        final byte[] data = EncoderUtils.hexStringToByteArray(msg);
-        SoniTalkMessage message = new SoniTalkMessage(data);
-        short[] generatedSignal = encode(data);
+        SoniTalkMessage message = new SoniTalkMessage(msg);
+        short[] generatedSignal = encode(message.getMessage());
         message.setRawAudio(generatedSignal);
-
-        //setDecoderState(STATE_GENERATED);
-
         return message;
     }
 
@@ -107,7 +97,6 @@ public class SoniTalkEncoder {
      * @return a short array with signal data
      */
     private short[] encode(byte[] data){
-        Log.e("test", "in method call");
         short[] encodedMessage = null;
         String bitOfText = encoderUtils.getStringOfEncodedBits(data, config);
         boolean doubleInverted = true;
