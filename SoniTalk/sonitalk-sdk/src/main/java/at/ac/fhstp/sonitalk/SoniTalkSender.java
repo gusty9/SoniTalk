@@ -111,6 +111,7 @@ public class SoniTalkSender {
         if (currentMessage != null && !currentMessage.equals(message)) {// if SoniTalkMessage is new, release the old audiotrack
             //Log.d("SoniTalkSender", "currentAudioTrack release");
             releaseSenderResources();
+
         }
         //else sender is reused
         Future job = executorService.submit(new Runnable() {
@@ -164,6 +165,7 @@ public class SoniTalkSender {
                     public void onPeriodicNotification(AudioTrack arg0) {}
                 });
                 // Increase the loudness of our signal
+
                 LoudnessEnhancer enhancer = new LoudnessEnhancer(currentAudioTrack.getAudioSessionId());
                 enhancer.setTargetGain(700);
                 enhancer.setEnabled(true);
@@ -173,11 +175,13 @@ public class SoniTalkSender {
                 audioManager.setStreamVolume(3, (int) Math.round((audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) * volume/100.0D)), 0);
                 */
                 // Should we handle potential errors (negative results)
+
                 int result = currentAudioTrack.write(message.getRawAudio(), 0, (winLenSamples/*+(winLenSamples/65)*/)); //put the whiteNoise shortarray into the player, buffersize winLenSamples are Shorts here
 
                 soniTalkContext.showNotificationSending();
                 setSenderState(STATE_SENDING);
                 currentAudioTrack.play();
+
             }
         });
         currentFuture = job;

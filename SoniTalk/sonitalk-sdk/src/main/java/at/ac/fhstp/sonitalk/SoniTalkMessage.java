@@ -67,7 +67,6 @@ public class SoniTalkMessage {
         this.message = EncoderUtils.hexStringToByteArray(message);
         crcIsCorrect = true;
         decodingTimeNanosecond = 0;
-
     }
 
     // Add optional spectrum array ?

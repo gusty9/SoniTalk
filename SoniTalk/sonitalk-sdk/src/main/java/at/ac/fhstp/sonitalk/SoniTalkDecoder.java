@@ -159,7 +159,7 @@ public class SoniTalkDecoder {
 
     private CRC crc;
 
-    /*package private*/SoniTalkDecoder(SoniTalkContext soniTalkContext, int sampleRate, SoniTalkConfig config) {
+    /*package private*/ SoniTalkDecoder(SoniTalkContext soniTalkContext, int sampleRate, SoniTalkConfig config) {
         this(soniTalkContext, sampleRate, config, 8, 50, false);
     }
 
@@ -444,7 +444,7 @@ public class SoniTalkDecoder {
     //ublic float[] getHistoryBuffer(){ synchronized (historyBuffer) {return historyBuffer.getArray();} }
 
 
-    private void analyzeHistoryBuffer(){
+    private void analyzeHistoryBuffer() {
         long readTimestamp = System.nanoTime();
         /* Will try with saving the whole buffer directly
         float firstWindow[];
