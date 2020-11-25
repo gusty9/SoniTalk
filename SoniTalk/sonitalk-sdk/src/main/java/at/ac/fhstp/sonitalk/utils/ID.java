@@ -12,7 +12,7 @@ public class ID {
     final static public int ID_LENGTH = 32;
     static String CURRENTID = "5BF689A62F6A5257DC5EEE226B1B0821";
     //static Random random = new Random((int) System.currentTimeMillis());
-    static Random random = new Random(0);
+    static Random random = new Random(System.currentTimeMillis());
 
     static public String generateRandomID() {
         int[] id = new int[ID_LENGTH];

@@ -72,17 +72,20 @@ public class SoniTalkChannelManager {
      * Send a message on a specific channel
      * @param msg
      *          The message to send
+     * @return
+     *          return the integer channel number the message was sent on
      */
-    public void sendMessage(String msg) {
+    public int sendMessage(String msg) {
         //make sure we can can get the microphone buffer
         if (mHistoryBuffer == null) {
             throw new IllegalStateException("Cannot send a message unless we are recording. Access to the microphone buffer is needed for channel selection");
         }
 
         int sendingChannel = getSendingChannel();
+        Log.e("Sending on channel " + sendingChannel, msg);
         SoniTalkMessage toSend = mChannels.get(sendingChannel-1).createMessage(msg);
         mSoniTalkSender.send(toSend, ON_SENDING_REQUEST_CODE);
-        Log.e("Sending on channel " + sendingChannel, msg);
+
         //loop until we are able to successfully send the message
 //        float[] buffer;
 //        while (true) {
@@ -105,6 +108,7 @@ public class SoniTalkChannelManager {
 //                sendingChannel = temp;
 //            }
 //        }
+        return sendingChannel;
     }
 
     /**
@@ -203,15 +207,30 @@ public class SoniTalkChannelManager {
         for (int i = 0; i < mChannels.size(); i++) {
             energies[i] = mChannels.get(i).getChannelEnergy(buffer);
         }
-        double min = energies[0];
+        if (mChannels.size() == 2) { //better logic for selecting sending channel with 2 channels\
+            while ((Math.abs(energies[0] - energies[1]) > 50) && energies[0] > 50 && energies[1] > 50) {
+                Log.e("No available sending channels", "trying again in 500ms");
+                try {
+                    Thread.sleep(500);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+        }
         int sendingChannel = 0;
-        //todo check if all channels are not available
+        double min = energies[0];
+
         for (int i = 1; i < energies.length; i++) {
+
             if (energies[i] < min) {
+
                 min = energies[i];
+
                 sendingChannel = i;
             }
         }
+
         return sendingChannel  + 1; //convert from index to channel #
     }
 
