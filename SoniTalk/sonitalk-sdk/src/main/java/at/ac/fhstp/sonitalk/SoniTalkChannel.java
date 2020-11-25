@@ -43,6 +43,9 @@ public class SoniTalkChannel {
     private int nNeighborsTimeLeftRight = 1;
     private String aggFcn = "median";
 
+    private int mChannelNumber;
+    private SoniTalkChannelMessageReceiver callback;
+
     /**
      * Constructor to create the channel with the json
      * file name of the channel configuration
@@ -61,6 +64,11 @@ public class SoniTalkChannel {
         for(int i = 0; i < nFrequencies; i++){
             frequencies[i] = f0 + frequencySpace *i;
         }
+    }
+
+    public void addMessageReceiver(SoniTalkChannelMessageReceiver receiver, int channel) {
+        this.callback = receiver;
+        this.mChannelNumber = channel;
     }
 
     /**
@@ -348,7 +356,9 @@ public class SoniTalkChannel {
         String decodedBitSequence = Arrays.toString(messageDecodedBySpec).replace(", ", "").replace("[","").replace("]","");
         final byte[] receivedMessage = DecoderUtils.binaryToBytes(decodedBitSequence);
         SoniTalkMessage message = new SoniTalkMessage(receivedMessage);
-        Log.e("Received message", message.getDecodedMessage());
+        if (callback != null) {
+            callback.onMessageReceived(message.getDecodedMessage(), mChannelNumber);
+        }
     }
 
     private float findClosestValueIn1DArray(int value, int winlen, int arraylength, int upperIdx, int lowerIdx){

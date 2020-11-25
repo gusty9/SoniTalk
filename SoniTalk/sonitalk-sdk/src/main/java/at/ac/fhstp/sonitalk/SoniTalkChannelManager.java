@@ -46,7 +46,7 @@ public class SoniTalkChannelManager {
      * @param channels
      *          variable length number of channels
      */
-    public SoniTalkChannelManager(SoniTalkContext soniTalkContext, SoniTalkChannel... channels) {
+    public SoniTalkChannelManager(SoniTalkContext soniTalkContext, SoniTalkChannelMessageReceiver receiver, SoniTalkChannel... channels) {
         mSoniTalkContext = soniTalkContext;
         mChannels = Arrays.asList(channels);
         mIsListening = false;
@@ -63,6 +63,9 @@ public class SoniTalkChannelManager {
 
         int historyBufferSize = ((bitperiodInSamples*nBlocks+pauseperiodInSamples*(nBlocks-1)));
         mHistoryBuffer = new CircularArray(historyBufferSize);
+        for (int i = 0; i < mChannels.size(); i++) {
+            mChannels.get(i).addMessageReceiver(receiver, i+1);
+        }
     }
 
     /**
