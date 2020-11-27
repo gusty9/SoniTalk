@@ -5,8 +5,10 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 import at.ac.fhstp.sonitalk.utils.CircularArray;
 import at.ac.fhstp.sonitalk.utils.TypeUtils;
@@ -25,6 +27,7 @@ public class SoniTalkChannelManager {
     private boolean mIsListening;
     private int mSampleRate = 44100;
     private Thread mRecordMicThread;
+    private Random random;
 
     //member variables for sending messages
     private SoniTalkSender mSoniTalkSender;
@@ -66,6 +69,7 @@ public class SoniTalkChannelManager {
         for (int i = 0; i < mChannels.size(); i++) {
             mChannels.get(i).addMessageReceiver(receiver, i+1);
         }
+        random = new Random();
     }
 
     /**
@@ -199,39 +203,21 @@ public class SoniTalkChannelManager {
     }
 
     private int getSendingChannel() {
-        double[] energies = new double[mChannels.size()];
+        List<Integer> availableChannels = new ArrayList<Integer>();
         float[] buffer;
-        synchronized (mHistoryBuffer) {
-            buffer = mHistoryBuffer.getArray();
-        }
-        for (int i = 0; i < mChannels.size(); i++) {
-            energies[i] = mChannels.get(i).getChannelEnergy(buffer);
-        }
-        if (mChannels.size() == 2) { //better logic for selecting sending channel with 2 channels\
-            while ((Math.abs(energies[0] - energies[1]) > 50) && energies[0] > 50 && energies[1] > 50) {
-                Log.e("No available sending channels", "trying again in 500ms");
-                try {
-                    Thread.sleep(500);
-                } catch (Exception e) {
-                    e.printStackTrace();
+        //loop until an available channel is found
+        while (availableChannels.size() == 0) {
+            synchronized (mHistoryBuffer) {
+                buffer = mHistoryBuffer.getArray();
+            }
+            for (int i = 0; i < mChannels.size(); i++) {
+                if (mChannels.get(i).isChannelAvailable(buffer)) {
+                    availableChannels.add(i);
                 }
             }
-
         }
-        int sendingChannel = 0;
-        double min = energies[0];
-
-        for (int i = 1; i < energies.length; i++) {
-
-            if (energies[i] < min) {
-
-                min = energies[i];
-
-                sendingChannel = i;
-            }
-        }
-
-        return sendingChannel  + 1; //convert from index to channel #
+        //return a random available channel
+        return availableChannels.get(random.nextInt(availableChannels.size())) + 1; //convert from index to channel #
     }
 
     /**

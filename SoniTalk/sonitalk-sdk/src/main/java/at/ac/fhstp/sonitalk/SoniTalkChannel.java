@@ -33,7 +33,7 @@ public class SoniTalkChannel {
     private double startFactor = 2.0;
     private double endFactor = 2.0;
     private int stepFactor = 8;
-    private double channelOccupiedEnergyThreshold = 10.0; //todo potentially test or calculated different thresholds
+    private double channelOccupiedEnergyThreshold = 100.0; //todo potentially test or calculated different thresholds
     private final Object sync = new Object();
     private boolean mHistoryBeingAnalyzed;
 
@@ -109,22 +109,85 @@ public class SoniTalkChannel {
         }.start();
     }
 
+    /**
+     * detect if there is either a block in the message buffer.
+     * If there is a head block, the channel is assumed to be busy
+     * If there is NOT a head block, the channel is free for sending
+     * @param historyBuffer
+     * @return
+     */
     public boolean isChannelAvailable(float[] historyBuffer) {
-        Butterworth channelFilter = new Butterworth();
-        double freqWidth = DecoderUtils.getBandpassWidth(mSoniTalkConfig.getnFrequencies(), mSoniTalkConfig.getFrequencySpace()) * 2;
-        double centerFreq = mSoniTalkConfig.getFrequencyZero() + (freqWidth / 2);
-        channelFilter.bandPass(8, mSampleRate, centerFreq, freqWidth);
-        double[] filtered = new double[historyBuffer.length];
-        for (int i = 0; i < historyBuffer.length; i++) {
-            filtered[i] = channelFilter.filter(historyBuffer[i]);
+        boolean hasStartBlock = checkForStartBlock(historyBuffer);
+        boolean hasEndBlock = checkForEndBlock(historyBuffer);
+        return (!hasEndBlock && !hasStartBlock) && getChannelEnergy(historyBuffer) < channelOccupiedEnergyThreshold; //idk if necessary
+    }
+
+    private boolean checkForStartBlock(float[] historyBuffer) {
+        int bitperiodInSamples = (int)Math.round(mSoniTalkConfig.getBitperiod() * (float)mSampleRate/1000);
+        int analysisWinLen = (int)Math.round((float) bitperiodInSamples / 2 );;
+        float[] firstWindow = new float[analysisWinLen];
+        System.arraycopy(historyBuffer, 0, firstWindow, 0, analysisWinLen);
+        int bandpassWidth = DecoderUtils.getBandpassWidth(mSoniTalkConfig.getnFrequencies(), mSoniTalkConfig.getFrequencySpace());
+        int centerFrequencyBandPassDown = mSoniTalkConfig.getFrequencyZero() + (bandpassWidth/2);
+        int centerFrequencyBandPassUp = mSoniTalkConfig.getFrequencyZero() + bandpassWidth + (bandpassWidth/2);
+        float[] startResponseUpper = firstWindow.clone();
+        float[] startResponseLower = firstWindow.clone();
+        int nextPowerOfTwo = DecoderUtils.nextPowerOfTwo(analysisWinLen);
+        double[] startResponseUpperDouble = new double[nextPowerOfTwo];
+        double[] startResponseLowerDouble = new double[nextPowerOfTwo];
+        Butterworth butterworthDown = new Butterworth();
+        butterworthDown.bandPass(8, mSampleRate, centerFrequencyBandPassDown, bandpassWidth);
+        Butterworth butterworthUp = new Butterworth();
+        butterworthUp.bandPass(8, mSampleRate, centerFrequencyBandPassUp, bandpassWidth);
+        for(int i = 0; i<startResponseLower.length; i++) {
+            startResponseUpperDouble[i] = butterworthUp.filter(startResponseUpper[i]);
+            startResponseLowerDouble[i] = butterworthDown.filter(startResponseLower[i]);
         }
-        ComplexArray complexArrayChannel = TypeUtils.threadSafeHilbertTransform(filtered);
-        double energy = 0;
-        for (int i = 0; i < complexArrayChannel.real.length; i++) {
-            energy += DecoderUtils.getComplexAbsolute(complexArrayChannel.real[i], complexArrayChannel.imag[i]);
+        ComplexArray complexArrayStartResponseUpper = TypeUtils.threadSafeHilbertTransform(startResponseUpperDouble);
+        ComplexArray complexArrayStartResponseLower = TypeUtils.threadSafeHilbertTransform(startResponseLowerDouble);
+        double sumAbsStartResponseUpper = 0;
+        double sumAbsStartResponseLower = 0;
+        for(int i = 0; i<complexArrayStartResponseUpper.real.length; i++){
+            sumAbsStartResponseUpper += DecoderUtils.getComplexAbsolute(complexArrayStartResponseUpper.real[i], complexArrayStartResponseUpper.imag[i]);
+            sumAbsStartResponseLower += DecoderUtils.getComplexAbsolute(complexArrayStartResponseLower.real[i], complexArrayStartResponseLower.imag[i]);
         }
-        Log.e("energy", "" + energy);
-        return energy < channelOccupiedEnergyThreshold;
+        return sumAbsStartResponseUpper > startFactor * sumAbsStartResponseLower;
+    }
+
+    private boolean checkForEndBlock(float[] historyBuffer) {
+        int bitperiodInSamples = (int)Math.round(mSoniTalkConfig.getBitperiod() * (float)mSampleRate/1000);
+        int analysisWinLen = (int)Math.round((float) bitperiodInSamples / 2 );;
+        float[] lastWindow = new float[analysisWinLen];
+        System.arraycopy(historyBuffer, historyBuffer.length - analysisWinLen, lastWindow, 0, analysisWinLen);
+        float[] endResponseUpper = lastWindow.clone();
+        float[] endResponseLower = lastWindow.clone();
+        int nextPowerOfTwo = DecoderUtils.nextPowerOfTwo(analysisWinLen);
+        int bandpassWidth = DecoderUtils.getBandpassWidth(mSoniTalkConfig.getnFrequencies(), mSoniTalkConfig.getFrequencySpace());
+        int centerFrequencyBandPassDown = mSoniTalkConfig.getFrequencyZero() + (bandpassWidth/2);
+        int centerFrequencyBandPassUp = mSoniTalkConfig.getFrequencyZero() + bandpassWidth + (bandpassWidth/2);
+        double[] endResponseUpperDouble = new double[nextPowerOfTwo];
+        double[] endResponseLowerDouble = new double[nextPowerOfTwo];
+        Butterworth butterworthDownEnd = new Butterworth();
+        butterworthDownEnd.bandPass(8,mSampleRate,centerFrequencyBandPassDown,bandpassWidth);
+        Butterworth butterworthUpEnd = new Butterworth();
+        butterworthUpEnd.bandPass(8,mSampleRate,centerFrequencyBandPassUp,bandpassWidth);
+
+        for(int i = 0; i<endResponseLower.length; i++) {
+            endResponseUpperDouble[i] = butterworthUpEnd.filter(endResponseUpper[i]);
+            endResponseLowerDouble[i] = butterworthDownEnd.filter(endResponseLower[i]);
+        }
+
+        //todo the hilbert transform function is not thread safe!!
+        ComplexArray complexArrayEndResponseUpper = TypeUtils.threadSafeHilbertTransform(endResponseUpperDouble);
+        ComplexArray complexArrayEndResponseLower = TypeUtils.threadSafeHilbertTransform(endResponseLowerDouble);
+
+        double sumAbsEndResponseUpper = 0;
+        double sumAbsEndResponseLower = 0;
+        for(int i = 0; i<complexArrayEndResponseUpper.real.length; i++){
+            sumAbsEndResponseUpper += DecoderUtils.getComplexAbsolute(complexArrayEndResponseUpper.real[i], complexArrayEndResponseUpper.imag[i]);
+            sumAbsEndResponseLower += DecoderUtils.getComplexAbsolute(complexArrayEndResponseLower.real[i], complexArrayEndResponseLower.imag[i]);
+        }
+        return sumAbsEndResponseLower > endFactor * sumAbsEndResponseUpper;
     }
 
     public double getChannelEnergy(float[] historyBuffer) {
@@ -146,72 +209,8 @@ public class SoniTalkChannel {
 
     private void checkForMessage(float[] historyBuffer) {
         long readTimestamp = System.nanoTime();
-        int bitperiodInSamples = (int)Math.round(mSoniTalkConfig.getBitperiod() * (float)mSampleRate/1000);
-        int analysisWinLen = (int)Math.round((float) bitperiodInSamples / 2 );;
-        float[] firstWindow = new float[analysisWinLen];
-        float[] lastWindow = new float[analysisWinLen];
-        System.arraycopy(historyBuffer, 0, firstWindow, 0, analysisWinLen);
-        System.arraycopy(historyBuffer, historyBuffer.length - analysisWinLen, lastWindow, 0, analysisWinLen);
-
-        int bandpassWidth = DecoderUtils.getBandpassWidth(mSoniTalkConfig.getnFrequencies(), mSoniTalkConfig.getFrequencySpace());
-        int centerFrequencyBandPassDown = mSoniTalkConfig.getFrequencyZero() + (bandpassWidth/2);
-        int centerFrequencyBandPassUp = mSoniTalkConfig.getFrequencyZero() + bandpassWidth + (bandpassWidth/2);
-
-        float[] startResponseUpper = firstWindow.clone();
-        float[] startResponseLower = firstWindow.clone();
-        int nextPowerOfTwo = DecoderUtils.nextPowerOfTwo(analysisWinLen);
-        double[] startResponseUpperDouble = new double[nextPowerOfTwo];
-        double[] startResponseLowerDouble = new double[nextPowerOfTwo];
-
-        Butterworth butterworthDown = new Butterworth();
-        butterworthDown.bandPass(8, mSampleRate, centerFrequencyBandPassDown, bandpassWidth);
-        Butterworth butterworthUp = new Butterworth();
-        butterworthUp.bandPass(8, mSampleRate, centerFrequencyBandPassUp, bandpassWidth);
-        for(int i = 0; i<startResponseLower.length; i++) {
-            startResponseUpperDouble[i] = butterworthUp.filter(startResponseUpper[i]);
-            startResponseLowerDouble[i] = butterworthDown.filter(startResponseLower[i]);
-        }
-        ComplexArray complexArrayStartResponseUpper = TypeUtils.threadSafeHilbertTransform(startResponseUpperDouble);
-        ComplexArray complexArrayStartResponseLower = TypeUtils.threadSafeHilbertTransform(startResponseLowerDouble);
-        double sumAbsStartResponseUpper = 0;
-        double sumAbsStartResponseLower = 0;
-        for(int i = 0; i<complexArrayStartResponseUpper.real.length; i++){
-            sumAbsStartResponseUpper += DecoderUtils.getComplexAbsolute(complexArrayStartResponseUpper.real[i], complexArrayStartResponseUpper.imag[i]);
-            sumAbsStartResponseLower += DecoderUtils.getComplexAbsolute(complexArrayStartResponseLower.real[i], complexArrayStartResponseLower.imag[i]);
-        }
-        long startMessageTimestamp = System.nanoTime();
-        if (sumAbsStartResponseUpper > startFactor * sumAbsStartResponseLower) {
-            // IF THIS IS TRUE, WE HAVE A START BLOCK!
-            float[] endResponseUpper = lastWindow.clone();
-            float[] endResponseLower = lastWindow.clone();
-
-            double[] endResponseUpperDouble = new double[nextPowerOfTwo];
-            double[] endResponseLowerDouble = new double[nextPowerOfTwo];
-            Butterworth butterworthDownEnd = new Butterworth();
-            butterworthDownEnd.bandPass(8,mSampleRate,centerFrequencyBandPassDown,bandpassWidth);
-            Butterworth butterworthUpEnd = new Butterworth();
-            butterworthUpEnd.bandPass(8,mSampleRate,centerFrequencyBandPassUp,bandpassWidth);
-
-            for(int i = 0; i<endResponseLower.length; i++) {
-                endResponseUpperDouble[i] = butterworthUpEnd.filter(endResponseUpper[i]);
-                endResponseLowerDouble[i] = butterworthDownEnd.filter(endResponseLower[i]);
-            }
-
-            //todo the hilbert transform function is not thread safe!!
-            ComplexArray complexArrayEndResponseUpper = TypeUtils.threadSafeHilbertTransform(endResponseUpperDouble);
-            ComplexArray complexArrayEndResponseLower = TypeUtils.threadSafeHilbertTransform(endResponseLowerDouble);
-
-            double sumAbsEndResponseUpper = 0;
-            double sumAbsEndResponseLower = 0;
-            for(int i = 0; i<complexArrayEndResponseUpper.real.length; i++){
-                sumAbsEndResponseUpper += DecoderUtils.getComplexAbsolute(complexArrayEndResponseUpper.real[i], complexArrayEndResponseUpper.imag[i]);
-                sumAbsEndResponseLower += DecoderUtils.getComplexAbsolute(complexArrayEndResponseLower.real[i], complexArrayEndResponseLower.imag[i]);
-            }
-            long endMessageTimestamp = System.nanoTime();
-            if(sumAbsEndResponseLower > endFactor * sumAbsEndResponseUpper) {
-                // THIS IS TRUE IN CASE WE FOUND AN END FRAME NOW ITS TIME TO DECODE THE MESSAGE IN BETWEEN
-                analyzeMessage(historyBuffer, readTimestamp );
-            }
+        if (checkForStartBlock(historyBuffer) && checkForEndBlock(historyBuffer)) {
+            analyzeMessage(historyBuffer, readTimestamp);
         }
     }
 
