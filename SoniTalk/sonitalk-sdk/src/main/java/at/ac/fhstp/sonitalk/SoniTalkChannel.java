@@ -2,7 +2,9 @@ package at.ac.fhstp.sonitalk;
 
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import at.ac.fhstp.sonitalk.utils.CircularArray;
 import at.ac.fhstp.sonitalk.utils.DecoderUtils;
@@ -45,6 +47,8 @@ public class SoniTalkChannel {
 
     private int mChannelNumber;
     private SoniTalkChannelMessageReceiver callback;
+    private List<String> receivedMessageList = new ArrayList<>();
+    private final Object receivedMessageMutex = new Object();
 
     /**
      * Constructor to create the channel with the json
@@ -357,6 +361,9 @@ public class SoniTalkChannel {
         SoniTalkMessage message = new SoniTalkMessage(receivedMessage);
         if (callback != null) {
             callback.onMessageReceived(message.getDecodedMessage(), mChannelNumber);
+            synchronized (receivedMessageMutex) {
+                receivedMessageList.add(message.getDecodedMessage());
+            }
         }
     }
 
@@ -419,6 +426,22 @@ public class SoniTalkChannel {
 
     public SoniTalkConfig getSoniTalkConfig() {
         return mSoniTalkConfig;
+    }
+
+    /**
+     * see if this channel has decoded an instance of 'message'
+     * @param message
+     *          the message to see if it has be decoded on this channel
+     * @return
+     *          true if the message has been seen,
+     *          false otherwise
+     */
+    public boolean decodedMessage(String message) {
+        boolean ret;
+        synchronized (receivedMessageMutex) {
+            ret = receivedMessageList.contains(message);
+        }
+        return ret;
     }
 
 }

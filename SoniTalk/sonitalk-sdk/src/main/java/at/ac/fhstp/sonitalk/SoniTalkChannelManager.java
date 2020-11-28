@@ -21,6 +21,8 @@ import at.ac.fhstp.sonitalk.utils.TypeUtils;
  */
 public class SoniTalkChannelManager {
     private final int ON_SENDING_REQUEST_CODE = 2001;
+    //todo calculate this time dynamically with configuration file
+    private final long MESSAGE_INTERFERENCE_THRESHOLD = 4000; //4 seconds.
     //member variables for creating this object
     private SoniTalkContext mSoniTalkContext;
     private List<SoniTalkChannel> mChannels;
@@ -89,29 +91,16 @@ public class SoniTalkChannelManager {
         Log.e("Sending on channel " + sendingChannel, msg);
         SoniTalkMessage toSend = mChannels.get(sendingChannel-1).createMessage(msg);
         mSoniTalkSender.send(toSend, ON_SENDING_REQUEST_CODE);
-
-        //loop until we are able to successfully send the message
-//        float[] buffer;
-//        while (true) {
-//            synchronized (mHistoryBuffer) {
-//                buffer = mHistoryBuffer.getArray();
-//            }
-//            if (mChannels.get(sendingChannel-1).isChannelAvailable(buffer)) {
-//                Log.e("Sending on channel " + sendingChannel, msg);
-//                SoniTalkMessage toSend = mChannels.get(sendingChannel-1).createMessage(msg);
-//                mSoniTalkSender.send(toSend, ON_SENDING_REQUEST_CODE);
-//                return;
-//            } else {
-//                Log.e("Channel " + sendingChannel, "Channel is unavailable");
-//
-//                //generate a new random number
-//                int temp = getRandomSendingChannel();
-//                while (sendingChannel == temp) {
-//                    temp = getRandomSendingChannel();
-//                }
-//                sendingChannel = temp;
-//            }
-//        }
+        //detect if the message was successfully sent
+        long sentTime = System.currentTimeMillis();
+        //loop until we can confirm that the message was sent
+        while (mChannels.get(sendingChannel - 1).decodedMessage(msg)) {
+            if (System.currentTimeMillis() - sentTime > MESSAGE_INTERFERENCE_THRESHOLD) {
+                //message wasn't detected within the detection time, send the message again
+                mSoniTalkSender.send(toSend, ON_SENDING_REQUEST_CODE);
+                sentTime = System.currentTimeMillis();
+            }
+        }
         return sendingChannel;
     }
 
@@ -164,8 +153,6 @@ public class SoniTalkChannelManager {
                 }
 
             }
-
-
         };
         mRecordMicThread.start();;
     }
