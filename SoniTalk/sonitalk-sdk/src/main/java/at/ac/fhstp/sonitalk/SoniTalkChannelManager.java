@@ -98,6 +98,7 @@ public class SoniTalkChannelManager {
             if (System.currentTimeMillis() - sentTime > MESSAGE_INTERFERENCE_THRESHOLD) {
                 //message wasn't detected within the detection time, send the message again
                 mSoniTalkSender.send(toSend, ON_SENDING_REQUEST_CODE);
+                Log.e("collision detected", "sending message again!");
                 sentTime = System.currentTimeMillis();
             }
         }
@@ -123,7 +124,6 @@ public class SoniTalkChannelManager {
                 mAudioRecord.startRecording();
                 while (run) {
                     //read audio data
-
                     short[] tempBuffer = new short[neededBytes];
                     float[] currentData = new float[neededBytes];
                     int readBytes = mAudioRecord.read(tempBuffer, 0, neededBytes);
@@ -144,14 +144,12 @@ public class SoniTalkChannelManager {
                         }
                         counter++;
                     }
-
                     //see if we need to stop writing to the history buffer
                     if (Thread.currentThread().isInterrupted()) {
                         run = false;
                         mAudioRecord.stop();
                     }
                 }
-
             }
         };
         mRecordMicThread.start();;
@@ -171,13 +169,10 @@ public class SoniTalkChannelManager {
     private void initializedAudioRecorder() {
         int minBufferSize = AudioRecord.getMinBufferSize(mSampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
         try {
-
             int audioRecorderBufferSize = analysisWinLen*10;
-
             if (audioRecorderBufferSize < minBufferSize) {
                 audioRecorderBufferSize = minBufferSize;
             }
-
             mAudioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, mSampleRate, AudioFormat.CHANNEL_IN_MONO,
                     AudioFormat.ENCODING_PCM_16BIT, audioRecorderBufferSize);
             if (mAudioRecord.getState() != AudioRecord.STATE_INITIALIZED) {
@@ -189,6 +184,11 @@ public class SoniTalkChannelManager {
         }
     }
 
+    /**
+     * return a available sending channel
+     * @return
+     *      the integer value of a random available channel
+     */
     private int getSendingChannel() {
         List<Integer> availableChannels = new ArrayList<Integer>();
         float[] buffer;
