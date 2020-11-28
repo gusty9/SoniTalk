@@ -97,8 +97,11 @@ public class SoniTalkChannelManager {
         while (mChannels.get(sendingChannel - 1).decodedMessage(msg)) {
             if (System.currentTimeMillis() - sentTime > MESSAGE_INTERFERENCE_THRESHOLD) {
                 //message wasn't detected within the detection time, send the message again
-                mSoniTalkSender.send(toSend, ON_SENDING_REQUEST_CODE);
+                //get new sending channel
                 Log.e("collision detected", "sending message again!");
+                sendingChannel = getSendingChannel();
+                toSend = mChannels.get(sendingChannel-1).createMessage(msg);
+                mSoniTalkSender.send(toSend, ON_SENDING_REQUEST_CODE);
                 sentTime = System.currentTimeMillis();
             }
         }
@@ -202,6 +205,14 @@ public class SoniTalkChannelManager {
                     availableChannels.add(i);
                 }
             }
+            if (availableChannels.size() == 0) {
+                //add some wait before trying again
+                try {
+                    Thread.sleep(getRandomSleepTime(250, 1250)); //sleep a random time before trying again
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
         }
         //return a random available channel
         return availableChannels.get(random.nextInt(availableChannels.size())) + 1; //convert from index to channel #
@@ -214,6 +225,10 @@ public class SoniTalkChannelManager {
      */
     private int getRandomSendingChannel() {
         return (int) ((Math.random() * mChannels.size()) + 1);
+    }
+
+    private int getRandomSleepTime(int min, int max) {
+        return (int) ((Math.random() * (max - min)) + min);
     }
 
 }
