@@ -23,13 +23,11 @@ import android.util.Log;
 
 import org.apache.commons.lang3.ArrayUtils;
 
-import java.math.BigInteger;
 import java.util.Arrays;
 
 import at.ac.fhstp.sonitalk.utils.CRC;
 import at.ac.fhstp.sonitalk.utils.ConfigConstants;
 import at.ac.fhstp.sonitalk.utils.EncoderUtils;
-import at.ac.fhstp.sonitalk.utils.RSUtils;
 import at.ac.fhstp.sonitalk.utils.SignalGenerator;
 import at.ac.fhstp.sonitalk.utils.SignalType;
 
@@ -75,15 +73,13 @@ public class SoniTalkEncoder {
     }
 
     /**
-     * Encodes a byte array of data using the configuration specified in the constructor.
-     * The SoniTalkMessage returned can then be send via a SoniTalkSender object.
-     * @param msg the hex String to be encoded
-     *              msg.length === 32
+     * Encodes a hexadecimal string into a byte array for the sonitalk sender
+     * @param hexString the hex String to be encoded
      *              for all char in the string must be a hex value (0-9, A-F)
      * @return a SoniTalkMessage containing the encoded data to be sent via a SoniTalkSender
      */
-    public SoniTalkMessage generateMessage(String msg) {
-        SoniTalkMessage message = new SoniTalkMessage(msg);
+    public SoniTalkMessage messageAsHexByteString(String hexString) {
+        SoniTalkMessage message = new SoniTalkMessage(hexString);
         short[] generatedSignal = encode(message.getMessage());
         message.setRawAudio(generatedSignal);
         return message;

@@ -19,8 +19,6 @@
 
 package at.ac.fhstp.sonitalk;
 
-import android.util.Log;
-
 import java.util.Arrays;
 
 import at.ac.fhstp.sonitalk.utils.EncoderUtils;
@@ -53,21 +51,13 @@ public class SoniTalkMessage {
 
     /**
      * Constructor used to send unique sequence of hex characters
-     * (32 hex characters for the a-turf case)
-     * generate a reed solomon code and appends it to the message
      * @param message
-     *          The 32 length hex string to send
+     *          The hex string to send
      */
     SoniTalkMessage(String message) {
-        if(message.length() != 32) {
-            throw new IllegalArgumentException("Error. Message must be a 32 length hex String");
-        }
-        message = message.toUpperCase(); //ensure our hex characters are upper case
-        message = RSUtils.getEDC(message) + message; //add the rs error correction code
         this.message = EncoderUtils.hexStringToByteArray(message);
         crcIsCorrect = true;
         decodingTimeNanosecond = 0;
-
     }
 
     // Add optional spectrum array ?
