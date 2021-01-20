@@ -116,14 +116,11 @@ public class SoniTalkSender {
         Future job = executorService.submit(new Runnable() {
             @Override
             public void run() {
-                Log.e("test", "checking permission");
                 if ((soniTalkContext != null) && ! soniTalkContext.checkSelfPermission(requestCode)) {
-                    Log.e("test", "failed check");
                     // Make a SoniTalkException out of this ? (currently send a callback to the developer)
                     Log.w(TAG, "SoniTalkSender requires a permission from SoniTalkContext.");
                     return;//throw new SecurityException("SoniTalkDecoder requires a permission from SoniTalkContext. Use SoniTalkContext.checkSelfPermission() to make sure that you have the right permission.");
                 }
-                Log.e("test", "got passed check");
 
                 runCount = 0;
                 maxRunCount = nTimes;

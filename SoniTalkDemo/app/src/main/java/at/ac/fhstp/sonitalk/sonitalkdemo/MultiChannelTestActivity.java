@@ -21,7 +21,8 @@ import at.ac.fhstp.sonitalk.utils.ID;
 import at.ac.fhstp.sonitalk.utils.RSUtils;
 
 public class MultiChannelTestActivity extends AppCompatActivity {
-    private Button button;
+    private Button channel1;
+    private Button channel2;
     private DynamicConfigProtocol protocol;
 
     @Override
@@ -37,18 +38,27 @@ public class MultiChannelTestActivity extends AppCompatActivity {
             e.printStackTrace();
         }
 
-        button = findViewById(R.id.button);
-        button.setOnClickListener(new View.OnClickListener(){
+        channel1 = findViewById(R.id.channel1);
+        channel2 = findViewById(R.id.channel2);
+        channel1.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                String message = ID.generateRandomID();
-                message = message.toUpperCase();
-                message = RSUtils.getEDC(message) + message;
-
-                protocol.sendMessage(message, 0);
-                Log.e("test", "send");
-
+                sendNewMessage(0);
             }
         });
+        channel2.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                sendNewMessage(1);
+            }
+        });
+    }
+
+    private void sendNewMessage(int channel) {
+        String message = ID.generateRandomID();
+        message = message.toUpperCase();
+        message = RSUtils.getEDC(message) + message;
+
+        protocol.sendMessage(message, channel);
     }
 }

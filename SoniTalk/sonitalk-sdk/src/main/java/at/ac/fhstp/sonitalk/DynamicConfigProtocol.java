@@ -24,7 +24,6 @@ public class DynamicConfigProtocol {
 
     public void sendMessage(String message, int channel) {
         SoniTalkSender sender = new SoniTalkSender(null);
-        Log.e("test", "sender created");
         sender.send(encodeMessage(message, channel), 2);
     }
 
