@@ -36,6 +36,7 @@ public class ConfigConstants {
     public static final String NUMBER_OF_MESSAGE_BLOCKS = "number-of-message-blocks";
     public static final String NUMBER_OF_FREQUENCIES = "number-of-frequencies";
     public static final String SPACE_BETWEEN_FREQUENCIES = "space-between-frequencies"; // In Hz
+    public static final String FLAG_FREQUENCY = "flag-frequency"; // In Hz
     /*** ***/
 
     /* NOT used in this version.

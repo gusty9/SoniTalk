@@ -320,6 +320,7 @@ public class SignalGenerator {
             case PLAYCONFIG:
                 int frequencyZero = config.getFrequencyZero();
                 int spaceBetweenFrequencies = config.getFrequencySpace();
+                int flagFrequency = config.getFlagFrequency();
 
                 for(int i = 0; i<numberOfFrequencies; i++) {
                     if(bitStringArray[i]!=null) {
@@ -331,7 +332,9 @@ public class SignalGenerator {
                         }
                     }
                 }
-
+                //add the 'flag' frequency to the list
+                mLine[freqCounter] = String.valueOf(flagFrequency);
+                freqCounter++;
 
                 break;
             case PAUSECONFIG:

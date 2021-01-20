@@ -63,6 +63,7 @@ public final class ConfigFactory {
         int nMessageBlocks = -1;
         int nFrequencies = -1;
         int frequencySpace = -1;
+        int flagFrequency = -1;
 
         reader.beginObject();
         while (reader.hasNext()) {
@@ -79,6 +80,8 @@ public final class ConfigFactory {
                 nFrequencies = reader.nextInt();
             }  else if (name.equals(ConfigConstants.SPACE_BETWEEN_FREQUENCIES)) {
                 frequencySpace = reader.nextInt();
+            } else if (name.equals(ConfigConstants.FLAG_FREQUENCY)) {
+                flagFrequency = reader.nextInt();
             } else {
                 Log.d(TAG, "Config file contains an unknown field: " + name);
                 reader.skipValue();
@@ -92,7 +95,7 @@ public final class ConfigFactory {
             throw new ConfigException("The configuration file does not match the required format.");
         }
 
-        return new SoniTalkConfig(f0, bitperiod, pauseperiod, nMessageBlocks, nFrequencies, frequencySpace);
+        return new SoniTalkConfig(f0, bitperiod, pauseperiod, nMessageBlocks, nFrequencies, frequencySpace, flagFrequency);
     }
 
     public static String[] getConfigList(Context context){

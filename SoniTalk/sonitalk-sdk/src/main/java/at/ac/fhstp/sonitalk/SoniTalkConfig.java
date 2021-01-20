@@ -34,14 +34,16 @@ public class SoniTalkConfig {
     private int nMessageBlocks;
     private int nFrequencies;// = 16;
     private int frequencySpace;// = 100; (Hz)
+    private int flagFrequency;// 22000 (Hz)
 
-    public SoniTalkConfig(int frequencyZero, int bitperiod, int pauseperiod, int nMessageBlocks, int nFrequencies, int frequencySpace) {
+    public SoniTalkConfig(int frequencyZero, int bitperiod, int pauseperiod, int nMessageBlocks, int nFrequencies, int frequencySpace, int flagFrequency) {
         this.frequencyZero = frequencyZero;
         this.bitperiod = bitperiod;
         this.pauseperiod = pauseperiod;
         this.nMessageBlocks = nMessageBlocks;
         this.nFrequencies = nFrequencies;
         this.frequencySpace = frequencySpace;
+        this.flagFrequency = flagFrequency;
     }
 
     public int getFrequencyZero() {
@@ -90,5 +92,13 @@ public class SoniTalkConfig {
 
     public void setFrequencySpace(int frequencySpace) {
         this.frequencySpace = frequencySpace;
+    }
+
+    public int getFlagFrequency() {
+        return flagFrequency;
+    }
+
+    public void setFlagFrequency(int flagFrequency) {
+        this.flagFrequency = flagFrequency;
     }
 }

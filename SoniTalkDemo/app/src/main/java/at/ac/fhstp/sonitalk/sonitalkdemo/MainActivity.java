@@ -260,7 +260,7 @@ public class MainActivity extends BaseActivity implements SoniTalkDecoder.Messag
         int nMaxBytes = Integer.valueOf(sp.getString(ConfigConstants.NUMBER_OF_BYTES, ConfigConstants.SETTING_NUMBER_OF_BYTES_DEFAULT));
 
         int nMessageBlocks = calculateNumberOfMessageBlocks(nFrequencies, nMaxBytes); // We want 10 message blocks by default
-        SoniTalkConfig config = new SoniTalkConfig(f0, bitperiod, pauseperiod, nMessageBlocks, nFrequencies, frequencySpace);
+        SoniTalkConfig config = new SoniTalkConfig(f0, bitperiod, pauseperiod, nMessageBlocks, nFrequencies, frequencySpace, 0);
         if (soniTalkContext == null) {
             soniTalkContext = SoniTalkContext.getInstance(MainActivity.this, soniTalkPermissionsResultReceiver);
         }
