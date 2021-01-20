@@ -116,11 +116,14 @@ public class SoniTalkSender {
         Future job = executorService.submit(new Runnable() {
             @Override
             public void run() {
-                if (! soniTalkContext.checkSelfPermission(requestCode)) {
+                Log.e("test", "checking permission");
+                if ((soniTalkContext != null) && ! soniTalkContext.checkSelfPermission(requestCode)) {
+                    Log.e("test", "failed check");
                     // Make a SoniTalkException out of this ? (currently send a callback to the developer)
                     Log.w(TAG, "SoniTalkSender requires a permission from SoniTalkContext.");
                     return;//throw new SecurityException("SoniTalkDecoder requires a permission from SoniTalkContext. Use SoniTalkContext.checkSelfPermission() to make sure that you have the right permission.");
                 }
+                Log.e("test", "got passed check");
 
                 runCount = 0;
                 maxRunCount = nTimes;
@@ -139,7 +142,9 @@ public class SoniTalkSender {
                 currentAudioTrack.setPlaybackPositionUpdateListener(new AudioTrack.OnPlaybackPositionUpdateListener(){
                     @Override
                     public void onMarkerReached(AudioTrack arg0) {
-                        soniTalkContext.cancelNotificationSending();
+                        if (soniTalkContext != null) {
+                            soniTalkContext.cancelNotificationSending();
+                        }
                         // TODO: Callback to signal message sent ? (different from sending job end). Would we then also need a callback when we start sending the next one ?
 
                         runCount++;
@@ -153,7 +158,9 @@ public class SoniTalkSender {
                             Future job = executorService.schedule(new Runnable() {
                                 @Override
                                 public void run() {
-                                    soniTalkContext.showNotificationSending();
+                                    if (soniTalkContext != null) {
+                                        soniTalkContext.showNotificationSending();
+                                    }
                                     currentAudioTrack.play();
                                 }
                             }, interval, timeUnit);
@@ -175,7 +182,10 @@ public class SoniTalkSender {
                 // Should we handle potential errors (negative results)
                 int result = currentAudioTrack.write(message.getRawAudio(), 0, (winLenSamples/*+(winLenSamples/65)*/)); //put the whiteNoise shortarray into the player, buffersize winLenSamples are Shorts here
 
-                soniTalkContext.showNotificationSending();
+                if (soniTalkContext != null) {
+                    soniTalkContext.showNotificationSending();
+                }
+
                 setSenderState(STATE_SENDING);
                 currentAudioTrack.play();
             }
@@ -205,10 +215,14 @@ public class SoniTalkSender {
                 currentAudioTrack.reloadStaticData();
             }
 
-            soniTalkContext.cancelNotificationSending();
+            if (soniTalkContext != null) {
+                soniTalkContext.cancelNotificationSending();
+            }
             setSenderState(STATE_IDLE);
 
-            soniTalkContext.sendJobFinished(currentRequestCode);
+            if (soniTalkContext != null) {
+                soniTalkContext.sendJobFinished(currentRequestCode);
+            }
             maxRunCount = -1;
             runCount = 0;
             return true;
