@@ -17,4 +17,10 @@
         android:layout_height="wrap_content"
         android:text="send message channel 2" />
 
+    <Button
+        android:id="@+id/start_listen"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="start listening" />
+
 </LinearLayout>

@@ -23,6 +23,7 @@ import at.ac.fhstp.sonitalk.utils.RSUtils;
 public class MultiChannelTestActivity extends AppCompatActivity {
     private Button channel1;
     private Button channel2;
+    private Button startListen;
     private DynamicConfigProtocol protocol;
 
     @Override
@@ -34,12 +35,12 @@ public class MultiChannelTestActivity extends AppCompatActivity {
             SoniTalkConfig channel2 = ConfigFactory.loadFromJson("channel2.json",this);
             protocol = new DynamicConfigProtocol(channel1, channel2);
         } catch (Exception e) {
-            Log.e("test", "doh");
             e.printStackTrace();
         }
 
         channel1 = findViewById(R.id.channel1);
         channel2 = findViewById(R.id.channel2);
+        startListen = findViewById(R.id.start_listen);
         channel1.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
@@ -50,6 +51,12 @@ public class MultiChannelTestActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 sendNewMessage(1);
+            }
+        });
+        startListen.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                protocol.beginAudioAnalysis();
             }
         });
     }

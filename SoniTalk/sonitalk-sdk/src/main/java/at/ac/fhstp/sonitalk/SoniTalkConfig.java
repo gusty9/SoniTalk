@@ -101,4 +101,11 @@ public class SoniTalkConfig {
     public void setFlagFrequency(int flagFrequency) {
         this.flagFrequency = flagFrequency;
     }
+
+    public int getHistoryBufferSize(int sampleRate) {
+        int bitperiodInSamples = (int) Math.round(bitperiod * (float)sampleRate/1000);
+        int pauseperiodInSamples = (int) Math.round(pauseperiod * (float)sampleRate/1000);
+        int  nBlocks = (int) Math.ceil(getnMessageBlocks() * 2) + 2;
+        return ((bitperiodInSamples*nBlocks+pauseperiodInSamples*(nBlocks-1)));
+    }
 }
