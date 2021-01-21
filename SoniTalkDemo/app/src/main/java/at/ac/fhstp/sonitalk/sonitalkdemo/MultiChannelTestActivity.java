@@ -24,6 +24,7 @@ public class MultiChannelTestActivity extends AppCompatActivity {
     private Button channel1;
     private Button channel2;
     private Button startListen;
+    private Button channelButton;
     private DynamicConfigProtocol protocol;
 
     @Override
@@ -41,6 +42,7 @@ public class MultiChannelTestActivity extends AppCompatActivity {
         channel1 = findViewById(R.id.channel1);
         channel2 = findViewById(R.id.channel2);
         startListen = findViewById(R.id.start_listen);
+        channelButton = findViewById(R.id.channel_button);
         channel1.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
@@ -57,6 +59,12 @@ public class MultiChannelTestActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 protocol.beginAudioAnalysis();
+            }
+        });
+        channelButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                protocol.testChannels();
             }
         });
     }

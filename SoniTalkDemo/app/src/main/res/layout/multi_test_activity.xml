@@ -23,4 +23,10 @@
         android:layout_height="wrap_content"
         android:text="start listening" />
 
+    <Button
+        android:id="@+id/channel_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="test channels" />
+
 </LinearLayout>

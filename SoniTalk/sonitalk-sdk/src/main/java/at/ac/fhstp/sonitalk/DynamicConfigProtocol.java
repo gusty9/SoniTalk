@@ -16,7 +16,7 @@ import marytts.util.math.Hilbert;
 import uk.me.berndporr.iirj.Butterworth;
 
 public class DynamicConfigProtocol {
-    public final int SAMPLE_RATE = 44100;
+    public static final int SAMPLE_RATE = 44100;
 
     private List<SoniTalkConfig> configList;
 
@@ -26,7 +26,7 @@ public class DynamicConfigProtocol {
     private AudioRecord audioRecorder;
     private Thread recordingThread;
     private boolean isRecording;
-    private int analysisWindowLength;
+    int analysisWindowLength;
 
     public DynamicConfigProtocol(SoniTalkConfig... configs) {
         configList = new ArrayList<>();
@@ -64,6 +64,7 @@ public class DynamicConfigProtocol {
                     synchronized (historyBuffer) {
                         historyBuffer.add(current);
                     }
+                    ChannelAnalyzer.selectChannel(current, configList, analysisWindowLength);
                     if (Thread.currentThread().isInterrupted()) {
                         run = false;
                         audioRecorder.stop();
@@ -72,10 +73,17 @@ public class DynamicConfigProtocol {
             }
         };
         recordingThread.start();
-        beginChannelAnalysis();
     }
 
-    public void beginChannelAnalysis() {
+    public void testChannels() {
+        float[] analysisHistoryBuffer;
+        synchronized (historyBuffer) {
+            analysisHistoryBuffer = historyBuffer.getArray();
+        }
+        ChannelAnalyzer.selectChannel(analysisHistoryBuffer, configList, analysisWindowLength);
+    }
+
+  /*  public void beginChannelAnalysis() {
         new Thread() {
             @Override
             public void run() {
@@ -116,7 +124,7 @@ public class DynamicConfigProtocol {
                         sumFlag += DecoderUtils.getComplexAbsolute(complexArrayFlag.real[i], complexArrayFlag.imag[i]);
                     }
 
-                    if (sumFlag > sumChannel) {
+                    if (sumFlag > sumChannel * 5.0) {
                         //if this is true, i ~think~ that the channel is occupied
                         Log.e("Channel Energy:", Double.toString(sumChannel));
                         Log.e("Flag Energy:", Double.toString(sumFlag));
@@ -126,6 +134,7 @@ public class DynamicConfigProtocol {
             }
         }.start();
     }
+   */
 
     private int getLargestRequiredBufferSize() {
         return configList.get(0).getHistoryBufferSize(SAMPLE_RATE);
