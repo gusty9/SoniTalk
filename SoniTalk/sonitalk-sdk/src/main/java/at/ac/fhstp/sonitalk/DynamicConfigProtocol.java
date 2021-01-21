@@ -10,6 +10,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import at.ac.fhstp.sonitalk.utils.CircularArray;
+import at.ac.fhstp.sonitalk.utils.DecoderUtils;
+import marytts.util.math.ComplexArray;
+import marytts.util.math.Hilbert;
 import uk.me.berndporr.iirj.Butterworth;
 
 public class DynamicConfigProtocol {
@@ -69,24 +72,56 @@ public class DynamicConfigProtocol {
             }
         };
         recordingThread.start();
+        beginChannelAnalysis();
     }
 
     public void beginChannelAnalysis() {
         new Thread() {
             @Override
             public void run() {
-                float[] analysisHistoryBuffer;
-                synchronized (historyBuffer) {
-                    analysisHistoryBuffer = historyBuffer.getArray();
+                while (true) {
+                    float[] analysisHistoryBuffer;
+                    synchronized (historyBuffer) {
+                        analysisHistoryBuffer = historyBuffer.getArray();
+                    }
+                    float[] frontWindow = new float[analysisWindowLength];
+                    float[] frontWindowFlag = new float[analysisWindowLength];
+                    System.arraycopy(analysisHistoryBuffer, 0, frontWindow, 0, analysisWindowLength);
+                    System.arraycopy(analysisHistoryBuffer, 0, frontWindowFlag, 0, analysisWindowLength);
+
+                    int channelWidth = DecoderUtils.getBandpassWidth(configList.get(0).getnFrequencies(), configList.get(0).getFrequencySpace());
+                    int centerFrequencyChannel = configList.get(0).getFrequencyZero() + (channelWidth/2);
+                    Butterworth butterworthChannel = new Butterworth();
+                    Butterworth butterworthFlag = new Butterworth();
+                    butterworthChannel.bandPass(8, SAMPLE_RATE, centerFrequencyChannel, channelWidth);
+                    butterworthFlag.bandPass(8, SAMPLE_RATE, configList.get(0).getFlagFrequency(), 100);
+
+                    int nextPowerTwo = DecoderUtils.nextPowerOfTwo(analysisWindowLength);
+                    double[] channelResponse = new double[nextPowerTwo];
+                    double[] flagResponse = new double[nextPowerTwo];
+
+                    for (int i = 0; i <  frontWindow.length; i ++) {
+                        channelResponse[i] = butterworthChannel.filter(frontWindow[i]);
+                        flagResponse[i] = butterworthFlag.filter(frontWindowFlag[i]);
+                    }
+
+                    ComplexArray complexArrayChannel = Hilbert.transform(channelResponse);
+                    ComplexArray complexArrayFlag = Hilbert.transform(flagResponse);
+
+                    double sumChannel = 0.0;
+                    double sumFlag = 0.0;
+
+                    for (int i = 0; i  <complexArrayFlag.real.length; i++) {
+                        sumChannel += DecoderUtils.getComplexAbsolute(complexArrayChannel.real[i], complexArrayChannel.imag[i]);
+                        sumFlag += DecoderUtils.getComplexAbsolute(complexArrayFlag.real[i], complexArrayFlag.imag[i]);
+                    }
+
+                    if (sumFlag > sumChannel) {
+                        //if this is true, i ~think~ that the channel is occupied
+                        Log.e("Channel Energy:", Double.toString(sumChannel));
+                        Log.e("Flag Energy:", Double.toString(sumFlag));
+                    }
                 }
-                float[] frontWindow = new float[analysisWindowLength];
-                float[] frontWindowFlag = new float[analysisWindowLength];
-                System.arraycopy(analysisHistoryBuffer, 0, frontWindow, 0, analysisWindowLength);
-                System.arraycopy(analysisHistoryBuffer, 0, frontWindowFlag, 0, analysisWindowLength);
-
-                Butterworth butterworthChannel = new Butterworth();
-                Butterworth butterworthFlag = new Butterworth();
-
 
             }
         }.start();

@@ -210,10 +210,12 @@ public class SoniTalkEncoder {
         // --- Create start and end blocks signals ---
         String[] protoArrayStart = new String[numberOfFrequencies];
         Arrays.fill(protoArrayStart, 0, (numberOfFrequencies/2)-1, "0");
-        Arrays.fill(protoArrayStart, numberOfFrequencies/2, numberOfFrequencies, "1");
+        //Arrays.fill(protoArrayStart, numberOfFrequencies/2, numberOfFrequencies, "1"); make empty start block
+        Arrays.fill(protoArrayStart, numberOfFrequencies/2, numberOfFrequencies, "0");
         short[] protoTrackStart = signalGen.getSignalBlock(SignalType.PLAYCONFIG, protoArrayStart);
         String[] protoArrayEnd = new String[numberOfFrequencies];
-        Arrays.fill(protoArrayEnd, 0, numberOfFrequencies/2, "1");
+        //Arrays.fill(protoArrayEnd, 0, numberOfFrequencies/2, "1"); make empty end block
+        Arrays.fill(protoArrayEnd, 0, numberOfFrequencies/2, "0");
         Arrays.fill(protoArrayEnd, numberOfFrequencies/2, numberOfFrequencies, "0");
         short[] protoTrackEnd = signalGen.getSignalBlock(SignalType.PLAYCONFIG, protoArrayEnd);
         // --- ----------------------------------- ---
