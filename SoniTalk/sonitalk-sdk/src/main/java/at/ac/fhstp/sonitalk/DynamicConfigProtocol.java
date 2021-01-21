@@ -28,6 +28,8 @@ public class DynamicConfigProtocol {
     private boolean isRecording;
     int analysisWindowLength;
 
+    private ChannelAnalyzer channelAnalyzer;
+
     public DynamicConfigProtocol(SoniTalkConfig... configs) {
         configList = new ArrayList<>();
         configList.addAll(Arrays.asList(configs));
@@ -36,6 +38,8 @@ public class DynamicConfigProtocol {
         audioRecorder = new AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, audioRecorderBufferSize);
         isRecording = false;
         analysisWindowLength = Math.round((float)((configList.get(0).getBitperiod() * (float) SAMPLE_RATE/1000)/2));
+
+        channelAnalyzer = new ChannelAnalyzer(configList, historyBuffer, analysisWindowLength);
     }
 
     private SoniTalkMessage encodeMessage(String message, int channel) {
@@ -64,7 +68,6 @@ public class DynamicConfigProtocol {
                     synchronized (historyBuffer) {
                         historyBuffer.add(current);
                     }
-                    ChannelAnalyzer.selectChannel(current, configList, analysisWindowLength);
                     if (Thread.currentThread().isInterrupted()) {
                         run = false;
                         audioRecorder.stop();
@@ -73,14 +76,11 @@ public class DynamicConfigProtocol {
             }
         };
         recordingThread.start();
+        channelAnalyzer.beginChannelAnalysis();
     }
 
     public void testChannels() {
-        float[] analysisHistoryBuffer;
-        synchronized (historyBuffer) {
-            analysisHistoryBuffer = historyBuffer.getArray();
-        }
-        ChannelAnalyzer.selectChannel(analysisHistoryBuffer, configList, analysisWindowLength);
+        channelAnalyzer.logAvailableChannels();
     }
 
   /*  public void beginChannelAnalysis() {
