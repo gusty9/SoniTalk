@@ -91,4 +91,20 @@ public class SoniTalkConfig {
     public void setFrequencySpace(int frequencySpace) {
         this.frequencySpace = frequencySpace;
     }
+
+    /**
+     * return the required size of the circular array buffer
+     * to fit the entire message from this configuration in it
+     * @param sampleRate
+     *          The sample rate the microphone buffer is being accessed at
+     * @return
+     *          The size of the history buffer array
+     */
+    public int getHistoryBufferSize(int sampleRate) {
+        int bitperiodInSamples = (int) Math.round(bitperiod * (float)sampleRate/1000);
+        int pauseperiodInSamples = (int) Math.round(pauseperiod * (float)sampleRate/1000);
+        int  nBlocks = (int) Math.ceil(getnMessageBlocks() * 2) + 2;
+        return ((bitperiodInSamples*nBlocks+pauseperiodInSamples*(nBlocks-1)));
+    }
+
 }
