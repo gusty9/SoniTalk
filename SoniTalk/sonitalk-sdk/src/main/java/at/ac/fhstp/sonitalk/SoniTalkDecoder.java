@@ -158,6 +158,55 @@ public class SoniTalkDecoder {
     private int decoderState = STATE_INITIALIZED;
 
     private CRC crc;
+    private Thread decoderThread;
+
+    /**
+     * Constructor to be used with the GaltonChat SDK
+     * @param config
+     * @param historyBuffer
+     */
+    SoniTalkDecoder(SoniTalkConfig config, CircularArray historyBuffer) {
+        this.Fs = GaltonChat.SAMPLE_RATE;
+        this.config = config;
+
+        int f0 = config.getFrequencyZero();
+        int bitperiod = config.getBitperiod();
+        int pauseperiod = config.getPauseperiod();
+        int nMessageBlocks = config.getnMessageBlocks();
+        int nFrequencies = config.getnFrequencies();
+        int frequencySpace = config.getFrequencySpace();
+
+        this.silentMode = false;
+        this.frequencyOffsetForSpectrogram = 50;
+        this.stepFactor = 8;
+        this.bandPassFilterOrder = 8;
+        this.startFactor = 2.0;
+        this.endFactor = 2.0;
+
+        winLenForSpectrogram = bitperiod;
+        winLenForSpectrogramInSamples = Math.round(Fs * (float) winLenForSpectrogram/1000);
+        if (winLenForSpectrogramInSamples % 2 != 0) {
+            winLenForSpectrogramInSamples ++; // Make sure winLenForSpectrogramInSamples is even
+        }
+
+        frequencies = new int[nFrequencies];
+        for(int i = 0; i < nFrequencies; i++){
+            frequencies[i] = f0 + frequencySpace *i;
+        }
+        this.nBlocks = (int)Math.ceil(nMessageBlocks*2)+2;
+        this.bitperiodInSamples = (int)Math.round(bitperiod * (float)Fs/1000);
+        this.pauseperiodInSamples = (int)Math.round(pauseperiod * (float)Fs/1000);
+
+        //analysisWinLen = getMinWinLenDividableByStepFactor((int)Math.ceil(bitperiodInSamples), stepFactor);
+        analysisWinLen = (int)Math.round((float) bitperiodInSamples / 2 );
+        analysisWinStep = (int)Math.round((float) analysisWinLen/ this.stepFactor);
+        nAnalysisWindowsPerBit =  Math.round((bitperiodInSamples+pauseperiodInSamples)/(float)analysisWinStep); //number of analysis windows of bit+pause
+        nAnalysisWindowsPerPause =  Math.round(pauseperiodInSamples/(float)analysisWinStep) ; //number of analysis windows during a pause
+        addedLen = analysisWinLen; // Needed for stepping analysis
+        this.historyBuffer = historyBuffer;
+        this.soniTalkContext = null;//we do not care
+        bandpassWidth = DecoderUtils.getBandpassWidth(nFrequencies, frequencySpace);
+    }
 
     /*package private*/SoniTalkDecoder(SoniTalkContext soniTalkContext, int sampleRate, SoniTalkConfig config) {
         this(soniTalkContext, sampleRate, config, 8, 50, false);
@@ -372,6 +421,24 @@ public class SoniTalkDecoder {
         //Log.d(TAG, "Message Decoder Thread stopped.");
     }
 
+    public void startDecoder() {
+        Log.e("test", "starting decoder thread");
+        decoderThread = new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                boolean run = true;
+                while(run) {
+                    analyzeHistoryBuffer();
+                    if (Thread.currentThread().isInterrupted()) {
+                        run = false;
+                    }
+                }
+            }
+        };
+        decoderThread.start();
+    }
+
     /**
      * Converts an input array from short to [-1.0;1.0] float, result is put into the (pre-allocated) output array
      * @param input
@@ -460,6 +527,7 @@ public class SoniTalkDecoder {
         synchronized (historyBuffer) {
             analysisHistoryBuffer = historyBuffer.getArray();
         }
+
         float firstWindow[] = new float[analysisWinLen];
         float lastWindow[] = new float[analysisWinLen];
         System.arraycopy(analysisHistoryBuffer, 0, firstWindow, 0, analysisWinLen);
@@ -494,10 +562,12 @@ public class SoniTalkDecoder {
         }
 
         ComplexArray complexArrayStartResponseUpper = Hilbert.transform(startResponseUpperDouble);
+      //  ComplexArray complexArrayStartResponseUpper = GaltonChat.threadSafeHilbert(startResponseUpperDouble);
         ComplexArray complexArrayStartResponseLower = Hilbert.transform(startResponseLowerDouble);
+       // ComplexArray complexArrayStartResponseLower = GaltonChat.threadSafeHilbert(startResponseLowerDouble);
 
-        double sumAbsStartResponseUpper = 0;
-        double sumAbsStartResponseLower = 0;
+        double sumAbsStartResponseUpper = 0.0;
+        double sumAbsStartResponseLower = 0.0;
         for(int i = 0; i<complexArrayStartResponseUpper.real.length; i++){
             sumAbsStartResponseUpper += DecoderUtils.getComplexAbsolute(complexArrayStartResponseUpper.real[i], complexArrayStartResponseUpper.imag[i]);
             sumAbsStartResponseLower += DecoderUtils.getComplexAbsolute(complexArrayStartResponseLower.real[i], complexArrayStartResponseLower.imag[i]);
@@ -548,7 +618,10 @@ public class SoniTalkDecoder {
         //Log.v("Timing", "From read to start message detection: " + String.valueOf((startMessageTimestamp-readTimestamp)/1000000) + "ms");
 
         //Log.e("StartResponseAvgBefore", "detection with factor: " + sumAbsStartResponseUpper/sumAbsStartResponseLower);
+
         if(sumAbsStartResponseUpper > startFactor * sumAbsStartResponseLower){
+            Log.e("test", "found head block");
+
             // IF THIS IS TRUE, WE HAVE A START BLOCK!
             //Log.d("StartResponseAvg", "message start detected with factor: " + sumAbsStartResponseUpper/sumAbsStartResponseLower);
             float[] endResponseUpper = lastWindow.clone();
@@ -620,6 +693,7 @@ public class SoniTalkDecoder {
 
             //Log.d("EndResponseAvgBefore", "end factor: " + sumAbsEndResponseLower/sumAbsEndResponseUpper);
             if(sumAbsEndResponseLower > endFactor * sumAbsEndResponseUpper) {
+                Log.e("test", "found tail block");
                 // THIS IS TRUE IN CASE WE FOUND AN END FRAME NOW ITS TIME TO DECODE THE MESSAGE IN BETWEEN
                 //Log.d("EndResponseAvg", "detection with factor: " + sumAbsEndResponseLower / sumAbsEndResponseUpper + " and " + sumAbsStartResponseUpper/sumAbsStartResponseLower);
 
@@ -831,7 +905,7 @@ public class SoniTalkDecoder {
         if (returnsRawAudio()) {
             message.setRawAudio(convertFloatToShort(analysisHistoryBuffer));
         }
-
+        Log.e("uh test", "got message?");
         notifyMessageListeners(message);
 
         //Original Bitsequence for the text "Hello Sonitalk" from SoniTalk Encoder 0100100001100001011011000110110001101111001000000101001101101111011011100110100101110100011000010110110001101011000110010001100100011001000110010001110010010100

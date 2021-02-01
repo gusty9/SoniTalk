@@ -10,6 +10,8 @@ import java.util.List;
 
 import at.ac.fhstp.sonitalk.utils.CircularArray;
 import edu.emory.mathcs.backport.java.util.Arrays;
+import marytts.util.math.ComplexArray;
+import marytts.util.math.Hilbert;
 
 /**
  * API Class for the GaltonChat API. Named after Francis Galton, the inventor of the dog whistle
@@ -22,6 +24,7 @@ public class GaltonChat {
 
     //configuration variables
     private List<SoniTalkConfig> configList;
+    private List<SoniTalkDecoder> decoderList;
 
     //audio recording
     private final CircularArray historyBuffer;//this is NOT thread safe. wrap in 'synchronized' block when accessing
@@ -47,6 +50,12 @@ public class GaltonChat {
         this.audioRecorderBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
         this.audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, audioRecorderBufferSize);
         this.isRecording = false;
+
+        //decoding variables
+        this.decoderList = new ArrayList<>();
+        for (int i = 0; i < configList.size(); i++) {
+            this.decoderList.add(new SoniTalkDecoder(configList.get(i), historyBuffer));
+        }
 
     }
 
@@ -100,7 +109,11 @@ public class GaltonChat {
             }
         };
         recordingThread.start();
-        channelAnalyzer.startAnalysis();
+        //channelAnalyzer.startAnalysis();
+        for (int i = 0; i < decoderList.size(); i++) {
+            //decoderList.get(i).startDecoder();
+        }
+        decoderList.get(0).startDecoder();
     }
 
     /**
@@ -154,4 +167,7 @@ public class GaltonChat {
         }
     }
 
+    public static synchronized ComplexArray threadSafeHilbert(double[] x) {
+        return Hilbert.transform(x);
+    }
 }

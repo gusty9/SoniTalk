@@ -95,14 +95,16 @@ public class ChannelAnalyzer {
                             butterworthUpper.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyUpper, bandpassWidth/2);
                             Butterworth butterworthLower = new Butterworth();
                             butterworthLower.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyLower, bandpassWidth/2);
-                            
+
                             for (int k = 0; k < responseLower.length; k++) {
                                 responseUpperDouble[k] = butterworthUpper.filter(responseUpper[k]);
                                 responseLowerDouble[k] = butterworthLower.filter(responseLower[k]);
                             }
 
-                            ComplexArray complexArrayUpper = Hilbert.transform(responseUpperDouble);
-                            ComplexArray complexArrayLower = Hilbert.transform(responseLowerDouble);
+                            //ComplexArray complexArrayUpper = Hilbert.transform(responseUpperDouble);
+                            ComplexArray complexArrayUpper = GaltonChat.threadSafeHilbert(responseUpperDouble);
+                           // ComplexArray complexArrayLower = Hilbert.transform(responseLowerDouble);
+                            ComplexArray complexArrayLower = GaltonChat.threadSafeHilbert(responseLowerDouble);
 
                             double sumAbsResponseUpper = 0.0;
                             double sumAbsResponseLower = 0.0;
