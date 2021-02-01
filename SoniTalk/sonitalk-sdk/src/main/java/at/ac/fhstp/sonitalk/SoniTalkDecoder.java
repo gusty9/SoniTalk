@@ -699,6 +699,8 @@ public class SoniTalkDecoder {
 
                 analyzeMessage(analysisHistoryBuffer, readTimestamp);
 
+            } else {
+                Log.e("NO TAIL", "lower: " + sumAbsEndResponseLower + " upper: " +sumAbsEndResponseUpper );
             }
 
         }

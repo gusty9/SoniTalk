@@ -1,6 +1,7 @@
 package at.ac.fhstp.sonitalk.sonitalkdemo;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
@@ -11,6 +12,7 @@ import at.ac.fhstp.sonitalk.GaltonChat;
 import at.ac.fhstp.sonitalk.SoniTalkConfig;
 import at.ac.fhstp.sonitalk.utils.ConfigFactory;
 import at.ac.fhstp.sonitalk.utils.ID;
+import at.ac.fhstp.sonitalk.utils.RSUtils;
 
 public class GaltonTestActivity extends AppCompatActivity {
     private Button startListeningButton;
@@ -50,23 +52,33 @@ public class GaltonTestActivity extends AppCompatActivity {
         sendChannel0Button.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                galton.sendChannel0(ID.generateRandomID());
+                galton.sendChannel0(generateNewMessage());
             }
         });
 
         sendChannel1Button.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                galton.sendChannel1(ID.generateRandomID());
+                galton.sendChannel1(generateNewMessage());
             }
         });
 
         sendAlgoButton.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                galton.sendMessage(ID.generateRandomID());
+                galton.sendMessage(generateNewMessage());
             }
         });
 
+    }
+
+    private String generateNewMessage() {
+        String s = ID.generateRandomID();
+        Log.e("ID", s);
+        String edc = RSUtils.getEDC(s);
+        Log.e("edc", edc);
+        String s2 = edc + s;
+        Log.e("BOTH", s2);
+        return s2;
     }
 }
