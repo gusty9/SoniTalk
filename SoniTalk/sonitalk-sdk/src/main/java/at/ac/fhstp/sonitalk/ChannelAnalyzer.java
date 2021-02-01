@@ -10,6 +10,8 @@ import java.util.Random;
 
 import at.ac.fhstp.sonitalk.utils.CircularArray;
 import at.ac.fhstp.sonitalk.utils.DecoderUtils;
+import at.ac.fhstp.sonitalk.utils.HammingWindow;
+import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D;
 import marytts.util.math.ComplexArray;
 import marytts.util.math.Hilbert;
 import uk.me.berndporr.iirj.Butterworth;
@@ -81,18 +83,19 @@ public class ChannelAnalyzer {
                             System.arraycopy(analysisHistoryBuffer, 0, responseLower, 0, analysisWindowLength);
 
                             //create the filtered arrays
-                            int nextPowerOfTwo = DecoderUtils.nextPowerOfTwo(analysisWindowLength);
-                            double[] responseUpperDouble = new double[nextPowerOfTwo];
-                            double[] responseLowerDouble = new double[nextPowerOfTwo];
+                            double[] responseUpperDouble = new double[analysisWindowLength];
+                            double[] responseLowerDouble = new double[analysisWindowLength];
                             int bandpassWidth = DecoderUtils.getBandpassWidth(configList.get(i).getnFrequencies(), configList.get(i).getFrequencySpace());
                             int centerFrequencyLower = configList.get(i).getFrequencyZero() + (bandpassWidth/2);
                             int centerFrequencyUpper = configList.get(i).getFrequencyZero() + bandpassWidth + (bandpassWidth/2);
 
                             //filter the arrays
+                            //only filter 1/2 the bandpass width in order to decrease overlap
                             Butterworth butterworthUpper = new Butterworth();
-                            butterworthUpper.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyUpper, bandpassWidth);
+                            butterworthUpper.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyUpper, bandpassWidth/2);
                             Butterworth butterworthLower = new Butterworth();
-                            butterworthLower.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyLower, bandpassWidth);
+                            butterworthLower.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyLower, bandpassWidth/2);
+                            
                             for (int k = 0; k < responseLower.length; k++) {
                                 responseUpperDouble[k] = butterworthUpper.filter(responseUpper[k]);
                                 responseLowerDouble[k] = butterworthLower.filter(responseLower[k]);
