@@ -206,6 +206,7 @@ public class SoniTalkDecoder {
         this.historyBuffer = historyBuffer;
         this.soniTalkContext = null;//we do not care
         bandpassWidth = DecoderUtils.getBandpassWidth(nFrequencies, frequencySpace);
+        historyBufferSize = ((bitperiodInSamples*nBlocks+pauseperiodInSamples*(nBlocks-1)));
     }
 
     /*package private*/SoniTalkDecoder(SoniTalkContext soniTalkContext, int sampleRate, SoniTalkConfig config) {
@@ -620,7 +621,6 @@ public class SoniTalkDecoder {
         //Log.e("StartResponseAvgBefore", "detection with factor: " + sumAbsStartResponseUpper/sumAbsStartResponseLower);
 
         if(sumAbsStartResponseUpper > startFactor * sumAbsStartResponseLower){
-            Log.e("test", "found head block");
 
             // IF THIS IS TRUE, WE HAVE A START BLOCK!
             //Log.d("StartResponseAvg", "message start detected with factor: " + sumAbsStartResponseUpper/sumAbsStartResponseLower);
@@ -693,16 +693,12 @@ public class SoniTalkDecoder {
 
             //Log.d("EndResponseAvgBefore", "end factor: " + sumAbsEndResponseLower/sumAbsEndResponseUpper);
             if(sumAbsEndResponseLower > endFactor * sumAbsEndResponseUpper) {
-                Log.e("test", "found tail block");
                 // THIS IS TRUE IN CASE WE FOUND AN END FRAME NOW ITS TIME TO DECODE THE MESSAGE IN BETWEEN
                 //Log.d("EndResponseAvg", "detection with factor: " + sumAbsEndResponseLower / sumAbsEndResponseUpper + " and " + sumAbsStartResponseUpper/sumAbsStartResponseLower);
 
                 analyzeMessage(analysisHistoryBuffer, readTimestamp);
 
-            } else {
-                Log.e("NO TAIL", "lower: " + sumAbsEndResponseLower + " upper: " +sumAbsEndResponseUpper );
             }
-
         }
 
         synchronized (historyBuffer) {
@@ -711,6 +707,7 @@ public class SoniTalkDecoder {
     }
 
     private void analyzeMessage(float[] analysisHistoryBuffer, long readTimestamp) {
+        Log.e("test", "analyzing message");
         int overlapForSpectrogramInSamples = winLenForSpectrogramInSamples - analysisWinStep;
         //int overlapForSpectrogramInSamples = Math.round(winLenForSpectrogramInSamples * 0.875f);
 
@@ -887,30 +884,29 @@ public class SoniTalkDecoder {
         }
         //Log.d("Decoded bit sequence", Arrays.toString(messageDecodedBySpec));
 
-        int parityCheckResult = crc.checkMessageCRC(messageDecodedBySpec/*, ConfigConstants.GENERATOR_POLYNOM*/);
-
-        if (!silentMode && parityCheckResult == 0) {
-            setLoopStopped(true);
-        }
-        notifySpectrumListeners(historyBufferFloatNormalized, parityCheckResult == 0);
-
-        // Decode message to UTF8
+        //not all decoding methods use crc.
+        //some use Reed Solomon code, so don't uses crc for those
         String decodedBitSequence = Arrays.toString(messageDecodedBySpec).replace(", ", "").replace("[","").replace("]","");
-        //String bitSequenceWithoutFillingAndCRC = DecoderUtils.removeFillingCharsAndCRCChars(decodedBitSequence, ConfigConstants.GENERATOR_POLYNOM.length);
         final byte[] receivedMessage = DecoderUtils.binaryToBytes(decodedBitSequence);
 
-        final long decodingTimeNanosecond = System.nanoTime()-readTimestamp;
-        //Log.d("Timing", "From read to received message: " + String.valueOf((decodingTimeNanosecond)/1000000) + "ms. CRC: " + String.valueOf(parityCheckResult));
-
-        SoniTalkMessage message = new SoniTalkMessage(receivedMessage, parityCheckResult == 0, decodingTimeNanosecond);
-
-        if (returnsRawAudio()) {
-            message.setRawAudio(convertFloatToShort(analysisHistoryBuffer));
+        if (crc != null) {
+            final long decodingTimeNanosecond = System.nanoTime()-readTimestamp;
+            int parityCheckResult = crc.checkMessageCRC(messageDecodedBySpec/*, ConfigConstants.GENERATOR_POLYNOM*/);
+            if (!silentMode && parityCheckResult == 0) {
+                setLoopStopped(true);
+            }
+            notifySpectrumListeners(historyBufferFloatNormalized, parityCheckResult == 0);
+            SoniTalkMessage message = new SoniTalkMessage(receivedMessage, parityCheckResult == 0, decodingTimeNanosecond);
+            if (returnsRawAudio()) {
+                message.setRawAudio(convertFloatToShort(analysisHistoryBuffer));
+            }
+            notifyMessageListeners(message);
+        } else {
+            SoniTalkMessage message = new SoniTalkMessage(receivedMessage);
+            String s = message.getHexString();
+            Log.e("test", s);
         }
-        Log.e("uh test", "got message?");
-        notifyMessageListeners(message);
 
-        //Original Bitsequence for the text "Hello Sonitalk" from SoniTalk Encoder 0100100001100001011011000110110001101111001000000101001101101111011011100110100101110100011000010110110001101011000110010001100100011001000110010001110010010100
     }
 
 
