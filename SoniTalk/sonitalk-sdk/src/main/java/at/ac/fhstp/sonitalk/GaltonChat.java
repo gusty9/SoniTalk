@@ -38,15 +38,15 @@ public class GaltonChat {
      */
     public GaltonChat(SoniTalkConfig... configs) {
         //init config variables
-        configList = new ArrayList<>();
-        configList.addAll(Arrays.asList(configs));
+        this.configList = new ArrayList<>();
+        this.configList.addAll(Arrays.asList(configs));
 
         //init audio recording variables
-        historyBuffer = new CircularArray(getLargestRequiredBufferSize());
+        this.historyBuffer = new CircularArray(getLargestRequiredBufferSize());
         this.channelAnalyzer = new ChannelAnalyzer(configList, historyBuffer);
-        audioRecorderBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
-        audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, audioRecorderBufferSize);
-        isRecording = false;
+        this.audioRecorderBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+        this.audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, audioRecorderBufferSize);
+        this.isRecording = false;
 
     }
 

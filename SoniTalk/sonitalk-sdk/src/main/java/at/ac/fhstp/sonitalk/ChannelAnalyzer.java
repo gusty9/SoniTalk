@@ -21,7 +21,7 @@ import uk.me.berndporr.iirj.Butterworth;
  */
 public class ChannelAnalyzer {
     private final int bandpassFilterOrder = 8;//todo figure out what this does
-    private final int messageHeaderFactor = 2;//todo test this a little bit more
+    private final int messageHeaderFactor = 4;//todo test this a little bit more
 
     private final List<SoniTalkConfig> configList;
     private final boolean[] channelsAvailable;
@@ -150,9 +150,11 @@ public class ChannelAnalyzer {
         }
 
         //handle special cases
+        //no channels are available
         if (channelAvailableIndices.size() == 0) {
             return -1;//todo determine what to do if both channels are full
         }
+        //exactly one channel is available
         if (channelAvailableIndices.size() == 1) {
             return channelAvailableIndices.get(0);
         }
@@ -191,7 +193,7 @@ public class ChannelAnalyzer {
     }
 
     private int getAnalysisWindowLength() {
-        return Math.round((float)((configList.get(0).getBitperiod() * (float) GaltonChat.SAMPLE_RATE/1000)/2));
+        return Math.round((float)((configList.get(0).getBitperiod() * (float) GaltonChat.SAMPLE_RATE/1000)/4));
     }
 
     private int getMessageDuration() {
