@@ -1,6 +1,7 @@
 package at.ac.fhstp.sonitalk;
 
 import android.os.Handler;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -91,7 +92,7 @@ public class ChannelAnalyzer {
                             Butterworth butterworthUpper = new Butterworth();
                             butterworthUpper.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyUpper, bandpassWidth);
                             Butterworth butterworthLower = new Butterworth();
-                            butterworthUpper.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyLower, bandpassWidth);
+                            butterworthLower.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyLower, bandpassWidth);
                             for (int k = 0; k < responseLower.length; k++) {
                                 responseUpperDouble[k] = butterworthUpper.filter(responseUpper[k]);
                                 responseLowerDouble[k] = butterworthLower.filter(responseLower[k]);
@@ -113,6 +114,7 @@ public class ChannelAnalyzer {
                                 //set this channel to occupied and set a timer to reset the channel
                                 synchronized (channelsAvailable) {
                                     channelsAvailable[i] = false;
+                                    Log.e("channel " + i, "lower: " + sumAbsResponseLower + " upper: " + sumAbsResponseUpper);
                                 }
                                 ChannelAvailableRunnable waitMessageDuration = new ChannelAvailableRunnable(channelsAvailable, i);
                                 delayedTaskHandler.postDelayed(waitMessageDuration, messageDuration);
@@ -183,6 +185,7 @@ public class ChannelAnalyzer {
             synchronized (channels) {
                 //ensure concurrency
                 channels[channelIndex] = true;
+                Log.e("test", "channel " + channelIndex + " available");
             }
         }
     }
@@ -192,7 +195,8 @@ public class ChannelAnalyzer {
     }
 
     private int getMessageDuration() {
-        return (configList.get(0).getnMessageBlocks() + 2) * configList.get(0).getBitperiod();
+        //todo figure out why its *1.5 and not what i think it is
+        return (int) (((configList.get(0).getnMessageBlocks() + 2) * configList.get(0).getBitperiod()) * (1.5));
     }
 
     private int getRandomItemFromList(List<Integer> items) {

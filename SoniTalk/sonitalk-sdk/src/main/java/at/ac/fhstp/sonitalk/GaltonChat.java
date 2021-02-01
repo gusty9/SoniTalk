@@ -112,6 +112,18 @@ public class GaltonChat {
         recordingThread.interrupt();//tell the thread to stop
     }
 
+    //method used for testing
+    public void sendChannel0(String message) {
+        SoniTalkSender sender = new SoniTalkSender(null);
+        sender.send(encodeMessage(message, 0), SONITALK_SENDER_REQUEST_CODE);
+    }
+
+    //method used for testing
+    public void sendChannel1(String message) {
+        SoniTalkSender sender = new SoniTalkSender(null);
+        sender.send(encodeMessage(message, 1), SONITALK_SENDER_REQUEST_CODE);
+    }
+
     /**
      * calculate the size of the history buffer needed to fit
      * an entire message for the slowest configuration
