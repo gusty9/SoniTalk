@@ -21,18 +21,13 @@ import uk.me.berndporr.iirj.Butterworth;
  * and determining which channels are available
  * @author Erik Gustafson
  */
-public class ChannelAnalyzer {
+public class ChannelAnalyzer extends AudioController {
     private final int bandpassFilterOrder = 8;//todo figure out what this does
     private final int messageHeaderFactor = 4;//todo test this a little bit more
 
     private final List<SoniTalkConfig> configList;
     private final boolean[] channelsAvailable;
-    private final CircularArray historyBuffer;
     private int messageDuration;//milliseconds
-    private int analysisWindowLength;// (1/2 a bit period, converted to discrete)
-
-    private Thread analysisThread;
-    private boolean isAnalyzing;
     private Handler delayedTaskHandler;
 
     /**
@@ -42,105 +37,80 @@ public class ChannelAnalyzer {
      *          Reference to the microphone history buffer
      */
     public ChannelAnalyzer(List<SoniTalkConfig> configList, CircularArray historyBuffer) {
+        super(historyBuffer, getAnalysisWindowLength(configList.get(0)));
         this.configList = new ArrayList<>();
         this.configList.addAll(configList);//create of the config, don't use the same reference
         this.channelsAvailable = new boolean[configList.size()];
         Arrays.fill(this.channelsAvailable, true);// all channels are set to available at first
-        this.historyBuffer = historyBuffer;
-        isAnalyzing = false;
         this.delayedTaskHandler = new Handler();
         this.messageDuration = getMessageDuration();
-        this.analysisWindowLength = getAnalysisWindowLength();
+
     }
 
     /**
-     * start analyzing the history buffer in a separate thread for
-     * new messages.
+     * analyze new samples pulled from the history buffer
+     * @param analysisHistoryBuffer
+     *          fresh set of samples pulled from the front of the circular
+     *          array microphone history buffer
      */
-    public void startAnalysis() {
-        isAnalyzing = true;
-        analysisThread = new Thread() {
-            @Override
-            public void run() {
-                super.run();
-                boolean run = true;
-                float[] analysisHistoryBuffer;
-                while(run) {
-                    synchronized (historyBuffer) {
-                        analysisHistoryBuffer = historyBuffer.getLastWindow(analysisWindowLength);
-                    }
-                    for (int i = 0; i < configList.size(); i++) {
-                        boolean available;
-                        synchronized (channelsAvailable) {
-                            available =  channelsAvailable[i];
-                        }
-                        //don't run the analysis if the channel is occupied.
-                        if (available) {
-                            //copy the samples from the buffer that were added most recently
-                            float[] responseUpper = new float[analysisWindowLength];
-                            float[] responseLower = new float[analysisWindowLength];
-                            System.arraycopy(analysisHistoryBuffer, 0, responseUpper, 0, analysisWindowLength);
-                            System.arraycopy(analysisHistoryBuffer, 0, responseLower, 0, analysisWindowLength);
+    @Override
+    void analyzeSamples(float[] analysisHistoryBuffer) {
+        for (int i = 0; i < configList.size(); i++) {
+            boolean available;
+            synchronized (channelsAvailable) {
+                available =  channelsAvailable[i];
+            }
+            //don't run the analysis if the channel is occupied.
+            if (available) {
+                int analysisWindowLength = getAnalysisWindowLength(configList.get(i));
+                //copy the samples from the buffer that were added most recently
+                float[] responseUpper = new float[analysisWindowLength];
+                float[] responseLower = new float[analysisWindowLength];
+                System.arraycopy(analysisHistoryBuffer, 0, responseUpper, 0, analysisWindowLength);
+                System.arraycopy(analysisHistoryBuffer, 0, responseLower, 0, analysisWindowLength);
 
-                            //create the filtered arrays
-                            double[] responseUpperDouble = new double[analysisWindowLength * 2];
-                            double[] responseLowerDouble = new double[analysisWindowLength * 2];
-                            int bandpassWidth = DecoderUtils.getBandpassWidth(configList.get(i).getnFrequencies(), configList.get(i).getFrequencySpace());
-                            int centerFrequencyLower = configList.get(i).getFrequencyZero() + (bandpassWidth/2);
-                            int centerFrequencyUpper = configList.get(i).getFrequencyZero() + bandpassWidth + (bandpassWidth/2);
+                //create the filtered arrays
+                double[] responseUpperDouble = new double[analysisWindowLength * 2];
+                double[] responseLowerDouble = new double[analysisWindowLength * 2];
+                int bandpassWidth = DecoderUtils.getBandpassWidth(configList.get(i).getnFrequencies(), configList.get(i).getFrequencySpace());
+                int centerFrequencyLower = configList.get(i).getFrequencyZero() + (bandpassWidth/2);
+                int centerFrequencyUpper = configList.get(i).getFrequencyZero() + bandpassWidth + (bandpassWidth/2);
 
-                            //filter the arrays
-                            //only filter 1/2 the bandpass width in order to decrease overlap
-                            Butterworth butterworthUpper = new Butterworth();
-                            butterworthUpper.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyUpper, bandpassWidth/2);
-                            Butterworth butterworthLower = new Butterworth();
-                            butterworthLower.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyLower, bandpassWidth/2);
+                //filter the arrays
+                //only filter 1/2 the bandpass width in order to decrease overlap
+                Butterworth butterworthUpper = new Butterworth();
+                butterworthUpper.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyUpper, bandpassWidth/2);
+                Butterworth butterworthLower = new Butterworth();
+                butterworthLower.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyLower, bandpassWidth/2);
 
-                            for (int k = 0; k < responseLower.length; k++) {
-                                responseUpperDouble[k] = butterworthUpper.filter(responseUpper[k]);
-                                responseLowerDouble[k] = butterworthLower.filter(responseLower[k]);
-                            }
-                            DoubleFFT_1D fft = new DoubleFFT_1D(responseUpper.length);
-                            fft.complexForward(responseUpperDouble);
-                            fft.complexForward(responseLowerDouble);
+                for (int k = 0; k < responseLower.length; k++) {
+                    responseUpperDouble[k] = butterworthUpper.filter(responseUpper[k]);
+                    responseLowerDouble[k] = butterworthLower.filter(responseLower[k]);
+                }
+                DoubleFFT_1D fft = new DoubleFFT_1D(responseUpper.length);
+                fft.complexForward(responseUpperDouble);
+                fft.complexForward(responseLowerDouble);
 
-                            double sumAbsResponseUpper = 0.0;
-                            double sumAbsResponseLower = 0.0;
+                double sumAbsResponseUpper = 0.0;
+                double sumAbsResponseLower = 0.0;
 
-                            for (int k = 0; k < responseUpperDouble.length; k+=2) {
-                                sumAbsResponseUpper += DecoderUtils.getComplexAbsolute(responseUpperDouble[k], responseUpperDouble[k+1]);
-                                sumAbsResponseLower += DecoderUtils.getComplexAbsolute(responseLowerDouble[k], responseLowerDouble[k+1]);
-                            }
-
-                            if (sumAbsResponseUpper > messageHeaderFactor * sumAbsResponseLower) {
-                                //if this is true, a message block was found in the most recently added samples to the buffer
-                                //set this channel to occupied and set a timer to reset the channel
-                                synchronized (channelsAvailable) {
-                                    channelsAvailable[i] = false;
-                                    Log.e("channel " + i, "lower: " + sumAbsResponseLower + " upper: " + sumAbsResponseUpper);
-                                }
-                                ChannelAvailableRunnable waitMessageDuration = new ChannelAvailableRunnable(channelsAvailable, i);
-                                delayedTaskHandler.postDelayed(waitMessageDuration, messageDuration);
-                            }
-                        }
-                    }
-
-                    if(Thread.currentThread().isInterrupted()) {
-                        run = false;
-                    }
+                for (int k = 0; k < responseUpperDouble.length; k+=2) {
+                    sumAbsResponseUpper += DecoderUtils.getComplexAbsolute(responseUpperDouble[k], responseUpperDouble[k+1]);
+                    sumAbsResponseLower += DecoderUtils.getComplexAbsolute(responseLowerDouble[k], responseLowerDouble[k+1]);
                 }
 
+                if (sumAbsResponseUpper > messageHeaderFactor * sumAbsResponseLower) {
+                    //if this is true, a message block was found in the most recently added samples to the buffer
+                    //set this channel to occupied and set a timer to reset the channel
+                    synchronized (channelsAvailable) {
+                        channelsAvailable[i] = false;
+                        Log.e("channel " + i, "lower: " + sumAbsResponseLower + " upper: " + sumAbsResponseUpper);
+                    }
+                    ChannelAvailableRunnable waitMessageDuration = new ChannelAvailableRunnable(channelsAvailable, i);
+                    delayedTaskHandler.postDelayed(waitMessageDuration, messageDuration);
+                }
             }
-        };
-        analysisThread.start();
-    }
-
-    /**
-     * Stop the recording thread from analyzing data
-     */
-    public void stopAnalysis() {
-        isAnalyzing = false;
-        analysisThread.interrupt();//tell thread to shutdown
+        }
     }
 
     /**
@@ -201,20 +171,6 @@ public class ChannelAnalyzer {
                 Log.e("test", "channel " + channelIndex + " available");
             }
         }
-    }
-
-    /**
-     * @return
-     *      The size of 1 analysis window for the channel detection algorithm
-     *      the window size is smaller than the decoder because there is less room
-     *      for error. The decoder can have a false positive for a head block and
-     *      have no unexpected behavior since it needs to detect a tail block
-     *
-     *      having a false positive in the channel selector reduces the throughput of
-     *      the whole system, so make the analysis window shorter
-     */
-    private int getAnalysisWindowLength() {
-        return Math.round((float)((configList.get(0).getBitperiod() * (float) GaltonChat.SAMPLE_RATE/1000)/4));
     }
 
     /**
