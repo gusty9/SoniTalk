@@ -135,11 +135,19 @@ public class ChannelAnalyzer {
         analysisThread.start();
     }
 
+    /**
+     * Stop the recording thread from analyzing data
+     */
     public void stopAnalysis() {
         isAnalyzing = false;
         analysisThread.interrupt();//tell thread to shutdown
     }
 
+    /**
+     * @return
+     *      an integer index of a sending channel
+     *      -1 if one is not available
+     */
     public int getSendingChannel() {
         List<Integer> channelAvailableIndices = new ArrayList<>();
         boolean[] channelsAvailableCpy = new boolean[channelsAvailable.length];
@@ -167,7 +175,7 @@ public class ChannelAnalyzer {
 
     /**
      * private inner class used to set a channel back to available after
-     * the duration of the message on that channel
+     * a duration equal to the duration of a single message
      */
     private class ChannelAvailableRunnable implements Runnable {
         private final boolean[] channels;
@@ -195,15 +203,36 @@ public class ChannelAnalyzer {
         }
     }
 
+    /**
+     * @return
+     *      The size of 1 analysis window for the channel detection algorithm
+     *      the window size is smaller than the decoder because there is less room
+     *      for error. The decoder can have a false positive for a head block and
+     *      have no unexpected behavior since it needs to detect a tail block
+     *
+     *      having a false positive in the channel selector reduces the throughput of
+     *      the whole system, so make the analysis window shorter
+     */
     private int getAnalysisWindowLength() {
         return Math.round((float)((configList.get(0).getBitperiod() * (float) GaltonChat.SAMPLE_RATE/1000)/4));
     }
 
+    /**
+     * @return
+     *      How long a message takes to play in ms
+     *      for some reason it is x2??
+     */
     private int getMessageDuration() {
         //todo figure out why its *1.5 and not what i think it is
         return (int) (((configList.get(0).getnMessageBlocks() + 2) * configList.get(0).getBitperiod()) * (2));
     }
 
+    /**
+     * @param items
+     *          a list of integer values
+     * @return
+     *          a random value from the list
+     */
     private int getRandomItemFromList(List<Integer> items) {
         return items.get(new Random().nextInt(items.size()));
     }

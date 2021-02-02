@@ -61,6 +61,13 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
 
     }
 
+    /**
+     * Send a hexadecimal string message on a given channel
+     * the channel is determined by the channel analyzer object
+     * as to reduce collisions
+     * @param message
+     *          The hexadecimal string message to send
+     */
     public void sendMessage(String message) {
         int channelToSend = channelAnalyzer.getSendingChannel();
         if (channelToSend != -1) {
@@ -74,13 +81,26 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         }
     }
 
+    /**
+     * Encode a hexadecimal string message at a given channel index
+     * @param message
+     *          The hexadecimal string to encode
+     * @param channel
+     *          The channel to encode the message for
+     * @return
+     *          The encoded sonitalk message
+     */
     private SoniTalkMessage encodeMessage(String message, int channel) {
         //we don't care about permissions so just make the context null
         SoniTalkEncoder encoder = new SoniTalkEncoder(null, configList.get(channel));
         return encoder.messageAsHexByteString(message);
     }
 
-
+    /**
+     * Callback method from implementing the Message Listener interface
+     * receives a callback whenever a decoder detects a message in the buffer
+     * @param receivedMessage message detected and received by the SDK.
+     */
     @Override
     public void onMessageReceived(SoniTalkMessage receivedMessage) {
         Log.e("GaltonChat Message Received", receivedMessage.getDecodedMessage());
