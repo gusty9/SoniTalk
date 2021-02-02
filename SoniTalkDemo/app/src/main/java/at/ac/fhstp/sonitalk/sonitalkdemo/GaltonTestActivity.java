@@ -73,12 +73,6 @@ public class GaltonTestActivity extends AppCompatActivity {
     }
 
     private String generateNewMessage() {
-        String s = ID.generateRandomID();
-        Log.e("ID", s);
-        String edc = RSUtils.getEDC(s);
-        Log.e("edc", edc);
-        String s2 = edc + s;
-        Log.e("BOTH", s2);
-        return s2;
+        return ID.generateRandomID();
     }
 }

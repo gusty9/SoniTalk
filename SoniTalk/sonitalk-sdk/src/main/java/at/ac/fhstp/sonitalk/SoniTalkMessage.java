@@ -51,10 +51,12 @@ public class SoniTalkMessage {
 
     /**
      * Constructor used to send unique sequence of hex characters
+     * appends the reed solomon error correction code
      * @param message
      *          The hex string to send
      */
     SoniTalkMessage(String message) {
+        message = RSUtils.getEDC(message) + message;
         this.message = EncoderUtils.hexStringToByteArray(message);
         crcIsCorrect = true;
         decodingTimeNanosecond = 0;
@@ -128,7 +130,7 @@ public class SoniTalkMessage {
      * Returns hex message after the reed solomon code has been decoded
      * @return
      */
-    public String getDecodedMessage() {
+    public String getDecodedMessage() throws NullPointerException {
         String hex = getHexString();
         String msg = hex.substring(4);
         String verify = hex.substring(0,4);

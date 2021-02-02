@@ -707,7 +707,7 @@ public class SoniTalkDecoder {
     }
 
     private void analyzeMessage(float[] analysisHistoryBuffer, long readTimestamp) {
-        Log.e("test", "analyzing message");
+
         int overlapForSpectrogramInSamples = winLenForSpectrogramInSamples - analysisWinStep;
         //int overlapForSpectrogramInSamples = Math.round(winLenForSpectrogramInSamples * 0.875f);
 
@@ -888,7 +888,7 @@ public class SoniTalkDecoder {
         //some use Reed Solomon code, so don't uses crc for those
         String decodedBitSequence = Arrays.toString(messageDecodedBySpec).replace(", ", "").replace("[","").replace("]","");
         final byte[] receivedMessage = DecoderUtils.binaryToBytes(decodedBitSequence);
-
+        SoniTalkMessage message;
         if (crc != null) {
             final long decodingTimeNanosecond = System.nanoTime()-readTimestamp;
             int parityCheckResult = crc.checkMessageCRC(messageDecodedBySpec/*, ConfigConstants.GENERATOR_POLYNOM*/);
@@ -896,16 +896,20 @@ public class SoniTalkDecoder {
                 setLoopStopped(true);
             }
             notifySpectrumListeners(historyBufferFloatNormalized, parityCheckResult == 0);
-            SoniTalkMessage message = new SoniTalkMessage(receivedMessage, parityCheckResult == 0, decodingTimeNanosecond);
+            message = new SoniTalkMessage(receivedMessage, parityCheckResult == 0, decodingTimeNanosecond);
             if (returnsRawAudio()) {
                 message.setRawAudio(convertFloatToShort(analysisHistoryBuffer));
             }
-            notifyMessageListeners(message);
         } else {
-            SoniTalkMessage message = new SoniTalkMessage(receivedMessage);
-            String s = message.getHexString();
-            Log.e("test", s);
+            message = new SoniTalkMessage(receivedMessage);
+            try {
+                String s = message.getDecodedMessage();
+                notifyMessageListeners(message);
+            } catch (Exception e) {
+                notifyMessageListenersOfError("Error decoding RS Error correction code. Raw received output was\n" + message.getHexString());
+            }
         }
+
 
     }
 

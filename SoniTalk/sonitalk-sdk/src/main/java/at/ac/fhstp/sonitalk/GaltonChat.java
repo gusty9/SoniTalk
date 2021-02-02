@@ -17,7 +17,7 @@ import marytts.util.math.Hilbert;
  * API Class for the GaltonChat API. Named after Francis Galton, the inventor of the dog whistle
  * @author Erik Gustafson
  */
-public class GaltonChat {
+public class GaltonChat implements SoniTalkDecoder.MessageListener {
     //minimum readable frequency = SAMPLE_RATE/2 = 22050
     public static final int SAMPLE_RATE = 44100;//should work with ~most~ devices
     private final int SONITALK_SENDER_REQUEST_CODE = 2;//todo uhh not sure what the request code is for but 2 works
@@ -54,7 +54,9 @@ public class GaltonChat {
         //decoding variables
         this.decoderList = new ArrayList<>();
         for (int i = 0; i < configList.size(); i++) {
-            this.decoderList.add(new SoniTalkDecoder(configList.get(i), historyBuffer));
+            SoniTalkDecoder decoder = new SoniTalkDecoder(configList.get(i), historyBuffer);
+            decoder.addMessageListener(this);
+            this.decoderList.add(decoder);
         }
 
     }
@@ -64,6 +66,7 @@ public class GaltonChat {
         if (channelToSend != -1) {
             //do not care about context, pass null
             SoniTalkSender sender = new SoniTalkSender(null);
+            SoniTalkMessage soniTalkmsg = new SoniTalkMessage(message);
             sender.send(encodeMessage(message, channelToSend), SONITALK_SENDER_REQUEST_CODE);
         } else {
             //all channels were occupied. Do something?
@@ -75,6 +78,17 @@ public class GaltonChat {
         //we don't care about permissions so just make the context null
         SoniTalkEncoder encoder = new SoniTalkEncoder(null, configList.get(channel));
         return encoder.messageAsHexByteString(message);
+    }
+
+
+    @Override
+    public void onMessageReceived(SoniTalkMessage receivedMessage) {
+        Log.e("GaltonChat Message Received", receivedMessage.getDecodedMessage());
+    }
+
+    @Override
+    public void onDecoderError(String errorMessage) {
+        Log.e("GaltonChat", errorMessage);
     }
 
     /**
