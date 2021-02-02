@@ -541,8 +541,8 @@ public class SoniTalkDecoder {
         int nextPowerOfTwo = DecoderUtils.nextPowerOfTwo(analysisWinLen);
         ////Log.d("nextPowerOfTwo", String.valueOf(nextPowerOfTwo));
 
-        double[] startResponseUpperDouble = new double[nextPowerOfTwo];
-        double[] startResponseLowerDouble = new double[nextPowerOfTwo];
+        double[] startResponseUpperDouble = new double[startResponseUpper.length * 2];
+        double[] startResponseLowerDouble = new double[startResponseLower.length * 2];
 
         int centerFrequencyBandPassDown = config.getFrequencyZero() + (bandpassWidth/2);
         int centerFrequencyBandPassUp = config.getFrequencyZero() + bandpassWidth + (bandpassWidth/2);
@@ -561,74 +561,30 @@ public class SoniTalkDecoder {
             startResponseUpperDouble[i] = butterworthUp.filter(startResponseUpper[i]);
             startResponseLowerDouble[i] = butterworthDown.filter(startResponseLower[i]);
         }
+        DoubleFFT_1D fft = new DoubleFFT_1D(startResponseUpper.length);
+        fft.complexForward(startResponseUpperDouble);
+        fft.complexForward(startResponseLowerDouble);
 
-        ComplexArray complexArrayStartResponseUpper = Hilbert.transform(startResponseUpperDouble);
-      //  ComplexArray complexArrayStartResponseUpper = GaltonChat.threadSafeHilbert(startResponseUpperDouble);
-        ComplexArray complexArrayStartResponseLower = Hilbert.transform(startResponseLowerDouble);
-       // ComplexArray complexArrayStartResponseLower = GaltonChat.threadSafeHilbert(startResponseLowerDouble);
+        //ComplexArray complexArrayStartResponseUpper = Hilbert.transform(startResponseUpperDouble);
+        //ComplexArray complexArrayStartResponseLower = Hilbert.transform(startResponseLowerDouble);
 
         double sumAbsStartResponseUpper = 0.0;
         double sumAbsStartResponseLower = 0.0;
-        for(int i = 0; i<complexArrayStartResponseUpper.real.length; i++){
-            sumAbsStartResponseUpper += DecoderUtils.getComplexAbsolute(complexArrayStartResponseUpper.real[i], complexArrayStartResponseUpper.imag[i]);
-            sumAbsStartResponseLower += DecoderUtils.getComplexAbsolute(complexArrayStartResponseLower.real[i], complexArrayStartResponseLower.imag[i]);
+        for(int i = 0; i< startResponseLowerDouble.length; i+=2){
+            sumAbsStartResponseUpper += DecoderUtils.getComplexAbsolute(startResponseUpperDouble[i], startResponseUpperDouble[i+1]);
+            sumAbsStartResponseLower += DecoderUtils.getComplexAbsolute(startResponseLowerDouble[i], startResponseLowerDouble[i+1]);
         }
-
-/* Without Hilbert
-        double sumAbsStartResponseUpper = 0;
-        double sumAbsStartResponseLower = 0;
-        for(int i = 0; i<startResponseUpperDouble.length; i++){
-            sumAbsStartResponseUpper += Math.abs(startResponseUpperDouble[i]);
-            sumAbsStartResponseLower += Math.abs(startResponseLowerDouble[i]);
-        }
-        */
-
-/* With individual frequencies
-        int frequencies[] = new int[nFrequencies];
-        for (int f = f0, i = 0; f < f0 + nFrequencies*frequencySpace; f += frequencySpace, i++) {
-            frequencies[i] = f;
-        }
-
-        double sumAbsStartResponseUpper = 0;
-        double sumAbsStartResponseLower = 0;
-        for(int fIndex = 0; fIndex < nFrequencies/2; fIndex++) {
-            int freqBandpassWidth = 50;
-            int centerFrequencyBandPassDown = frequencies[fIndex];
-            int centerFrequencyBandPassUp = frequencies[nFrequencies-1-fIndex];
-            Butterworth butterworthDown = new Butterworth();
-            butterworthDown.bandPass(bandPassFilterOrder,Fs,centerFrequencyBandPassDown,freqBandpassWidth);
-
-            Butterworth butterworthUp = new Butterworth();
-            butterworthUp.bandPass(bandPassFilterOrder,Fs,centerFrequencyBandPassUp,freqBandpassWidth);
-
-            for(int i = 0; i<startResponseLower.length; i++) {
-                startResponseUpperDouble[i] = butterworthUp.filter(startResponseUpper[i]);
-                startResponseLowerDouble[i] = butterworthDown.filter(startResponseLower[i]);
-            }
-
-            ComplexArray complexArrayStartResponseUpper = Hilbert.transform(startResponseUpperDouble);
-            ComplexArray complexArrayStartResponseLower = Hilbert.transform(startResponseLowerDouble);
-
-            for(int i = 0; i<complexArrayStartResponseUpper.real.length; i++){
-                sumAbsStartResponseUpper += getComplexAbsolute(complexArrayStartResponseUpper.real[i], complexArrayStartResponseUpper.imag[i]);
-                sumAbsStartResponseLower += getComplexAbsolute(complexArrayStartResponseLower.real[i], complexArrayStartResponseLower.imag[i]);
-            }
-        }*/
 
         long startMessageTimestamp = System.nanoTime();
-        //Log.v("Timing", "From read to start message detection: " + String.valueOf((startMessageTimestamp-readTimestamp)/1000000) + "ms");
-
-        //Log.e("StartResponseAvgBefore", "detection with factor: " + sumAbsStartResponseUpper/sumAbsStartResponseLower);
-
         if(sumAbsStartResponseUpper > startFactor * sumAbsStartResponseLower){
-
+            //Log.e("test", "upper: " + sumAbsStartResponseUpper + " lower: " + sumAbsStartResponseLower);
             // IF THIS IS TRUE, WE HAVE A START BLOCK!
             //Log.d("StartResponseAvg", "message start detected with factor: " + sumAbsStartResponseUpper/sumAbsStartResponseLower);
             float[] endResponseUpper = lastWindow.clone();
             float[] endResponseLower = lastWindow.clone();
 
-            double[] endResponseUpperDouble = new double[nextPowerOfTwo];
-            double[] endResponseLowerDouble = new double[nextPowerOfTwo];
+            double[] endResponseUpperDouble = new double[endResponseUpper.length * 2];
+            double[] endResponseLowerDouble = new double[endResponseLower.length * 2];
 
 
             /* With individual frequencies
@@ -668,14 +624,16 @@ public class SoniTalkDecoder {
                 endResponseLowerDouble[i] = butterworthDownEnd.filter(endResponseLower[i]);
             }
 
-            ComplexArray complexArrayEndResponseUpper = Hilbert.transform(endResponseUpperDouble);
-            ComplexArray complexArrayEndResponseLower = Hilbert.transform(endResponseLowerDouble);
+            //ComplexArray complexArrayEndResponseUpper = Hilbert.transform(endResponseUpperDouble);
+            //ComplexArray complexArrayEndResponseLower = Hilbert.transform(endResponseLowerDouble);
+            fft.complexForward(endResponseUpperDouble);
+            fft.complexForward(endResponseLowerDouble);
 
             double sumAbsEndResponseUpper = 0;
             double sumAbsEndResponseLower = 0;
-            for(int i = 0; i<complexArrayEndResponseUpper.real.length; i++){
-                sumAbsEndResponseUpper += DecoderUtils.getComplexAbsolute(complexArrayEndResponseUpper.real[i], complexArrayEndResponseUpper.imag[i]);
-                sumAbsEndResponseLower += DecoderUtils.getComplexAbsolute(complexArrayEndResponseLower.real[i], complexArrayEndResponseLower.imag[i]);
+            for(int i = 0; i< endResponseUpperDouble.length; i+=2){
+                sumAbsEndResponseUpper += DecoderUtils.getComplexAbsolute(endResponseUpperDouble[i], endResponseUpperDouble[i+1]);
+                sumAbsEndResponseLower += DecoderUtils.getComplexAbsolute(endResponseLowerDouble[i], endResponseLowerDouble[i+1]);
             }
 
 
