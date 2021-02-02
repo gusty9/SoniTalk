@@ -203,7 +203,7 @@ public class ChannelAnalyzer {
 
     private int getMessageDuration() {
         //todo figure out why its *1.5 and not what i think it is
-        return (int) (((configList.get(0).getnMessageBlocks() + 2) * configList.get(0).getBitperiod()) * (1.5));
+        return (int) (((configList.get(0).getnMessageBlocks() + 2) * configList.get(0).getBitperiod()) * (2));
     }
 
     private int getRandomItemFromList(List<Integer> items) {

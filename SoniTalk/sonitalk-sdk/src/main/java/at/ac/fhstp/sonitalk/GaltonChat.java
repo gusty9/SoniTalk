@@ -123,7 +123,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
             }
         };
         recordingThread.start();
-        //channelAnalyzer.startAnalysis();
+        channelAnalyzer.startAnalysis();
         for (int i = 0; i < decoderList.size(); i++) {
             decoderList.get(i).startDecoder();
         }
