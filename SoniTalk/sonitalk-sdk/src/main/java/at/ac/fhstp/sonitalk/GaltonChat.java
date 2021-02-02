@@ -180,7 +180,4 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         }
     }
 
-    public static synchronized ComplexArray threadSafeHilbert(double[] x) {
-        return Hilbert.transform(x);
-    }
 }

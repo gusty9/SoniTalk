@@ -83,8 +83,8 @@ public class ChannelAnalyzer {
                             System.arraycopy(analysisHistoryBuffer, 0, responseLower, 0, analysisWindowLength);
 
                             //create the filtered arrays
-                            double[] responseUpperDouble = new double[analysisWindowLength];
-                            double[] responseLowerDouble = new double[analysisWindowLength];
+                            double[] responseUpperDouble = new double[analysisWindowLength * 2];
+                            double[] responseLowerDouble = new double[analysisWindowLength * 2];
                             int bandpassWidth = DecoderUtils.getBandpassWidth(configList.get(i).getnFrequencies(), configList.get(i).getFrequencySpace());
                             int centerFrequencyLower = configList.get(i).getFrequencyZero() + (bandpassWidth/2);
                             int centerFrequencyUpper = configList.get(i).getFrequencyZero() + bandpassWidth + (bandpassWidth/2);
@@ -100,18 +100,16 @@ public class ChannelAnalyzer {
                                 responseUpperDouble[k] = butterworthUpper.filter(responseUpper[k]);
                                 responseLowerDouble[k] = butterworthLower.filter(responseLower[k]);
                             }
-
-                            //ComplexArray complexArrayUpper = Hilbert.transform(responseUpperDouble);
-                            ComplexArray complexArrayUpper = GaltonChat.threadSafeHilbert(responseUpperDouble);
-                           // ComplexArray complexArrayLower = Hilbert.transform(responseLowerDouble);
-                            ComplexArray complexArrayLower = GaltonChat.threadSafeHilbert(responseLowerDouble);
+                            DoubleFFT_1D fft = new DoubleFFT_1D(responseUpper.length);
+                            fft.complexForward(responseUpperDouble);
+                            fft.complexForward(responseLowerDouble);
 
                             double sumAbsResponseUpper = 0.0;
                             double sumAbsResponseLower = 0.0;
 
-                            for (int k = 0; k < complexArrayUpper.real.length; k++) {
-                                sumAbsResponseUpper += DecoderUtils.getComplexAbsolute(complexArrayUpper.real[k], complexArrayUpper.imag[k]);
-                                sumAbsResponseLower += DecoderUtils.getComplexAbsolute(complexArrayLower.real[k], complexArrayLower.imag[k]);
+                            for (int k = 0; k < responseUpperDouble.length; k+=2) {
+                                sumAbsResponseUpper += DecoderUtils.getComplexAbsolute(responseUpperDouble[k], responseUpperDouble[k+1]);
+                                sumAbsResponseLower += DecoderUtils.getComplexAbsolute(responseLowerDouble[k], responseLowerDouble[k+1]);
                             }
 
                             if (sumAbsResponseUpper > messageHeaderFactor * sumAbsResponseLower) {
