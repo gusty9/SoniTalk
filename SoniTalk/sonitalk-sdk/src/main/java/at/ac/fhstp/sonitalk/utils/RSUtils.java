@@ -33,7 +33,6 @@ public class RSUtils {
                 message[i] = Integer.parseInt(x.substring(2 * i, 2 * (i + 1)), 16);
             } catch (Exception e) {
                 message[i] = Integer.parseInt("FF", 16);
-                Log.e("test", "parse error");
             }
         }
         //System.err.println("Original message\t\t: " + Arrays.toString(message));
@@ -66,18 +65,18 @@ public class RSUtils {
         for (int i = 0; i < message.length; i++) {
             message[i] = Integer.parseInt(x.substring(2 * i, 2 * (i + 1)), 16);
         }
-        System.err.println("Original message\t\t: " + Arrays.toString(message));
+        //System.err.println("Original message\t\t: " + Arrays.toString(message));
 
         Integer[] edc = rs.encode(message);
 
-        System.err.println("Encoded codeword\t\t: " + Arrays.toString(edc));
+        //System.err.println("Encoded codeword\t\t: " + Arrays.toString(edc));
 
         StringBuilder result = new StringBuilder();
 
         for (Integer k : edc) {
             result.append(Integer.toHexString((k & 0xf0) >>> 4)).append(Integer.toHexString(k & 0x0f));
         }
-        System.err.println("HEX Encoded codeword\t\t: " + result.toString().toUpperCase());
+        //System.err.println("HEX Encoded codeword\t\t: " + result.toString().toUpperCase());
 
         return result.substring(0, 4).toUpperCase();
     }
