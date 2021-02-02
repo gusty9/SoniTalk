@@ -1,5 +1,7 @@
 package at.ac.fhstp.sonitalk.utils;
 
+import android.util.Log;
+
 import java.util.Arrays;
 
 import edu.osu.cse.rs.BinaryField;
@@ -18,7 +20,7 @@ public class RSUtils {
      * @param verify
      * @return
      */
-    public static String Decode(String hex, String verify) {
+    public static String Decode(String hex, String verify) throws NullPointerException {
 
         String x = verify + hex;
         //System.err.println("Original message\t\t: " + x);
@@ -31,6 +33,7 @@ public class RSUtils {
                 message[i] = Integer.parseInt(x.substring(2 * i, 2 * (i + 1)), 16);
             } catch (Exception e) {
                 message[i] = Integer.parseInt("FF", 16);
+                Log.e("test", "parse error");
             }
         }
         //System.err.println("Original message\t\t: " + Arrays.toString(message));
@@ -42,13 +45,11 @@ public class RSUtils {
         //System.err.println("Encoded codeword\t\t: " + Arrays.toString(raw));
 
         StringBuilder result = new StringBuilder();
-        try {
-            for (Integer k : raw) {
-                result.append(Integer.toHexString((k & 0xf0) >>> 4)).append(Integer.toHexString(k & 0x0f));
-            }
-        } catch (NullPointerException e) {
-            //System.err.println("RSUtils 145 Null Pointer Exception");
+
+        for (Integer k : raw) {
+            result.append(Integer.toHexString((k & 0xf0) >>> 4)).append(Integer.toHexString(k & 0x0f));
         }
+
 
         return result.toString().toUpperCase();
     }

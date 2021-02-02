@@ -29,13 +29,9 @@ import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
-import androidx.annotation.NonNull;
-import com.google.android.material.snackbar.Snackbar;
-import androidx.core.app.ActivityCompat;
-import androidx.appcompat.app.AlertDialog;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -43,6 +39,12 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.core.app.ActivityCompat;
+
+import com.google.android.material.snackbar.Snackbar;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -52,10 +54,10 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+
 import at.ac.fhstp.sonitalk.SoniTalkConfig;
 import at.ac.fhstp.sonitalk.SoniTalkContext;
 import at.ac.fhstp.sonitalk.SoniTalkDecoder;
@@ -66,9 +68,8 @@ import at.ac.fhstp.sonitalk.SoniTalkSender;
 import at.ac.fhstp.sonitalk.exceptions.ConfigException;
 import at.ac.fhstp.sonitalk.exceptions.DecoderStateException;
 import at.ac.fhstp.sonitalk.utils.ConfigFactory;
-import at.ac.fhstp.sonitalk.utils.DecoderUtils;
-import at.ac.fhstp.sonitalk.utils.EncoderUtils;
 import at.ac.fhstp.sonitalk.utils.ID;
+import at.ac.fhstp.sonitalk.utils.RSUtils;
 
 import static android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS;
 import static at.ac.fhstp.sonitalk.utils.EncoderUtils.calculateNumberOfMessageBlocks;
@@ -306,8 +307,10 @@ public class MainActivity extends BaseActivity implements SoniTalkDecoder.Messag
                 @Override
                 public void run() {
                     String id = ID.generateRandomID();
-                    edtSignalText.setText(id);
-                    currentMessage = soniTalkEncoder.generateMessage(id);
+                    id = id.toUpperCase();
+                    edtSignalText.setText(id); //display the message
+                    id = RSUtils.getEDC(id) + id;//add error code to message
+                    currentMessage = soniTalkEncoder.messageAsHexByteString(id);
                     sendMessage();
                 }
             });

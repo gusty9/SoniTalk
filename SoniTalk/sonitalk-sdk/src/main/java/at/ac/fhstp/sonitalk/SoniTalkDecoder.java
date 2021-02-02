@@ -158,6 +158,56 @@ public class SoniTalkDecoder {
     private int decoderState = STATE_INITIALIZED;
 
     private CRC crc;
+    private Thread decoderThread;
+
+    /**
+     * Constructor to be used with the GaltonChat SDK
+     * @param config
+     * @param historyBuffer
+     */
+    SoniTalkDecoder(SoniTalkConfig config, CircularArray historyBuffer) {
+        this.Fs = GaltonChat.SAMPLE_RATE;
+        this.config = config;
+
+        int f0 = config.getFrequencyZero();
+        int bitperiod = config.getBitperiod();
+        int pauseperiod = config.getPauseperiod();
+        int nMessageBlocks = config.getnMessageBlocks();
+        int nFrequencies = config.getnFrequencies();
+        int frequencySpace = config.getFrequencySpace();
+
+        this.silentMode = false;
+        this.frequencyOffsetForSpectrogram = 50;
+        this.stepFactor = 8;
+        this.bandPassFilterOrder = 8;
+        this.startFactor = 2.0;
+        this.endFactor = 2.0;
+
+        winLenForSpectrogram = bitperiod;
+        winLenForSpectrogramInSamples = Math.round(Fs * (float) winLenForSpectrogram/1000);
+        if (winLenForSpectrogramInSamples % 2 != 0) {
+            winLenForSpectrogramInSamples ++; // Make sure winLenForSpectrogramInSamples is even
+        }
+
+        frequencies = new int[nFrequencies];
+        for(int i = 0; i < nFrequencies; i++){
+            frequencies[i] = f0 + frequencySpace *i;
+        }
+        this.nBlocks = (int)Math.ceil(nMessageBlocks*2)+2;
+        this.bitperiodInSamples = (int)Math.round(bitperiod * (float)Fs/1000);
+        this.pauseperiodInSamples = (int)Math.round(pauseperiod * (float)Fs/1000);
+
+        //analysisWinLen = getMinWinLenDividableByStepFactor((int)Math.ceil(bitperiodInSamples), stepFactor);
+        analysisWinLen = (int)Math.round((float) bitperiodInSamples / 2 );
+        analysisWinStep = (int)Math.round((float) analysisWinLen/ this.stepFactor);
+        nAnalysisWindowsPerBit =  Math.round((bitperiodInSamples+pauseperiodInSamples)/(float)analysisWinStep); //number of analysis windows of bit+pause
+        nAnalysisWindowsPerPause =  Math.round(pauseperiodInSamples/(float)analysisWinStep) ; //number of analysis windows during a pause
+        addedLen = analysisWinLen; // Needed for stepping analysis
+        this.historyBuffer = historyBuffer;
+        this.soniTalkContext = null;//we do not care
+        bandpassWidth = DecoderUtils.getBandpassWidth(nFrequencies, frequencySpace);
+        historyBufferSize = ((bitperiodInSamples*nBlocks+pauseperiodInSamples*(nBlocks-1)));
+    }
 
     /*package private*/SoniTalkDecoder(SoniTalkContext soniTalkContext, int sampleRate, SoniTalkConfig config) {
         this(soniTalkContext, sampleRate, config, 8, 50, false);
@@ -372,6 +422,24 @@ public class SoniTalkDecoder {
         //Log.d(TAG, "Message Decoder Thread stopped.");
     }
 
+    public void startDecoder() {
+        Log.e("test", "starting decoder thread");
+        decoderThread = new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                boolean run = true;
+                while(run) {
+                    analyzeHistoryBuffer();
+                    if (Thread.currentThread().isInterrupted()) {
+                        run = false;
+                    }
+                }
+            }
+        };
+        decoderThread.start();
+    }
+
     /**
      * Converts an input array from short to [-1.0;1.0] float, result is put into the (pre-allocated) output array
      * @param input
@@ -460,6 +528,7 @@ public class SoniTalkDecoder {
         synchronized (historyBuffer) {
             analysisHistoryBuffer = historyBuffer.getArray();
         }
+
         float firstWindow[] = new float[analysisWinLen];
         float lastWindow[] = new float[analysisWinLen];
         System.arraycopy(analysisHistoryBuffer, 0, firstWindow, 0, analysisWinLen);
@@ -472,8 +541,8 @@ public class SoniTalkDecoder {
         int nextPowerOfTwo = DecoderUtils.nextPowerOfTwo(analysisWinLen);
         ////Log.d("nextPowerOfTwo", String.valueOf(nextPowerOfTwo));
 
-        double[] startResponseUpperDouble = new double[nextPowerOfTwo];
-        double[] startResponseLowerDouble = new double[nextPowerOfTwo];
+        double[] startResponseUpperDouble = new double[startResponseUpper.length * 2];
+        double[] startResponseLowerDouble = new double[startResponseLower.length * 2];
 
         int centerFrequencyBandPassDown = config.getFrequencyZero() + (bandpassWidth/2);
         int centerFrequencyBandPassUp = config.getFrequencyZero() + bandpassWidth + (bandpassWidth/2);
@@ -492,70 +561,30 @@ public class SoniTalkDecoder {
             startResponseUpperDouble[i] = butterworthUp.filter(startResponseUpper[i]);
             startResponseLowerDouble[i] = butterworthDown.filter(startResponseLower[i]);
         }
+        DoubleFFT_1D fft = new DoubleFFT_1D(startResponseUpper.length);
+        fft.complexForward(startResponseUpperDouble);
+        fft.complexForward(startResponseLowerDouble);
 
-        ComplexArray complexArrayStartResponseUpper = Hilbert.transform(startResponseUpperDouble);
-        ComplexArray complexArrayStartResponseLower = Hilbert.transform(startResponseLowerDouble);
+        //ComplexArray complexArrayStartResponseUpper = Hilbert.transform(startResponseUpperDouble);
+        //ComplexArray complexArrayStartResponseLower = Hilbert.transform(startResponseLowerDouble);
 
-        double sumAbsStartResponseUpper = 0;
-        double sumAbsStartResponseLower = 0;
-        for(int i = 0; i<complexArrayStartResponseUpper.real.length; i++){
-            sumAbsStartResponseUpper += DecoderUtils.getComplexAbsolute(complexArrayStartResponseUpper.real[i], complexArrayStartResponseUpper.imag[i]);
-            sumAbsStartResponseLower += DecoderUtils.getComplexAbsolute(complexArrayStartResponseLower.real[i], complexArrayStartResponseLower.imag[i]);
+        double sumAbsStartResponseUpper = 0.0;
+        double sumAbsStartResponseLower = 0.0;
+        for(int i = 0; i< startResponseLowerDouble.length; i+=2){
+            sumAbsStartResponseUpper += DecoderUtils.getComplexAbsolute(startResponseUpperDouble[i], startResponseUpperDouble[i+1]);
+            sumAbsStartResponseLower += DecoderUtils.getComplexAbsolute(startResponseLowerDouble[i], startResponseLowerDouble[i+1]);
         }
-
-/* Without Hilbert
-        double sumAbsStartResponseUpper = 0;
-        double sumAbsStartResponseLower = 0;
-        for(int i = 0; i<startResponseUpperDouble.length; i++){
-            sumAbsStartResponseUpper += Math.abs(startResponseUpperDouble[i]);
-            sumAbsStartResponseLower += Math.abs(startResponseLowerDouble[i]);
-        }
-        */
-
-/* With individual frequencies
-        int frequencies[] = new int[nFrequencies];
-        for (int f = f0, i = 0; f < f0 + nFrequencies*frequencySpace; f += frequencySpace, i++) {
-            frequencies[i] = f;
-        }
-
-        double sumAbsStartResponseUpper = 0;
-        double sumAbsStartResponseLower = 0;
-        for(int fIndex = 0; fIndex < nFrequencies/2; fIndex++) {
-            int freqBandpassWidth = 50;
-            int centerFrequencyBandPassDown = frequencies[fIndex];
-            int centerFrequencyBandPassUp = frequencies[nFrequencies-1-fIndex];
-            Butterworth butterworthDown = new Butterworth();
-            butterworthDown.bandPass(bandPassFilterOrder,Fs,centerFrequencyBandPassDown,freqBandpassWidth);
-
-            Butterworth butterworthUp = new Butterworth();
-            butterworthUp.bandPass(bandPassFilterOrder,Fs,centerFrequencyBandPassUp,freqBandpassWidth);
-
-            for(int i = 0; i<startResponseLower.length; i++) {
-                startResponseUpperDouble[i] = butterworthUp.filter(startResponseUpper[i]);
-                startResponseLowerDouble[i] = butterworthDown.filter(startResponseLower[i]);
-            }
-
-            ComplexArray complexArrayStartResponseUpper = Hilbert.transform(startResponseUpperDouble);
-            ComplexArray complexArrayStartResponseLower = Hilbert.transform(startResponseLowerDouble);
-
-            for(int i = 0; i<complexArrayStartResponseUpper.real.length; i++){
-                sumAbsStartResponseUpper += getComplexAbsolute(complexArrayStartResponseUpper.real[i], complexArrayStartResponseUpper.imag[i]);
-                sumAbsStartResponseLower += getComplexAbsolute(complexArrayStartResponseLower.real[i], complexArrayStartResponseLower.imag[i]);
-            }
-        }*/
 
         long startMessageTimestamp = System.nanoTime();
-        //Log.v("Timing", "From read to start message detection: " + String.valueOf((startMessageTimestamp-readTimestamp)/1000000) + "ms");
-
-        //Log.e("StartResponseAvgBefore", "detection with factor: " + sumAbsStartResponseUpper/sumAbsStartResponseLower);
         if(sumAbsStartResponseUpper > startFactor * sumAbsStartResponseLower){
+            //Log.e("test", "upper: " + sumAbsStartResponseUpper + " lower: " + sumAbsStartResponseLower);
             // IF THIS IS TRUE, WE HAVE A START BLOCK!
             //Log.d("StartResponseAvg", "message start detected with factor: " + sumAbsStartResponseUpper/sumAbsStartResponseLower);
             float[] endResponseUpper = lastWindow.clone();
             float[] endResponseLower = lastWindow.clone();
 
-            double[] endResponseUpperDouble = new double[nextPowerOfTwo];
-            double[] endResponseLowerDouble = new double[nextPowerOfTwo];
+            double[] endResponseUpperDouble = new double[endResponseUpper.length * 2];
+            double[] endResponseLowerDouble = new double[endResponseLower.length * 2];
 
 
             /* With individual frequencies
@@ -595,14 +624,16 @@ public class SoniTalkDecoder {
                 endResponseLowerDouble[i] = butterworthDownEnd.filter(endResponseLower[i]);
             }
 
-            ComplexArray complexArrayEndResponseUpper = Hilbert.transform(endResponseUpperDouble);
-            ComplexArray complexArrayEndResponseLower = Hilbert.transform(endResponseLowerDouble);
+            //ComplexArray complexArrayEndResponseUpper = Hilbert.transform(endResponseUpperDouble);
+            //ComplexArray complexArrayEndResponseLower = Hilbert.transform(endResponseLowerDouble);
+            fft.complexForward(endResponseUpperDouble);
+            fft.complexForward(endResponseLowerDouble);
 
             double sumAbsEndResponseUpper = 0;
             double sumAbsEndResponseLower = 0;
-            for(int i = 0; i<complexArrayEndResponseUpper.real.length; i++){
-                sumAbsEndResponseUpper += DecoderUtils.getComplexAbsolute(complexArrayEndResponseUpper.real[i], complexArrayEndResponseUpper.imag[i]);
-                sumAbsEndResponseLower += DecoderUtils.getComplexAbsolute(complexArrayEndResponseLower.real[i], complexArrayEndResponseLower.imag[i]);
+            for(int i = 0; i< endResponseUpperDouble.length; i+=2){
+                sumAbsEndResponseUpper += DecoderUtils.getComplexAbsolute(endResponseUpperDouble[i], endResponseUpperDouble[i+1]);
+                sumAbsEndResponseLower += DecoderUtils.getComplexAbsolute(endResponseLowerDouble[i], endResponseLowerDouble[i+1]);
             }
 
 
@@ -626,7 +657,6 @@ public class SoniTalkDecoder {
                 analyzeMessage(analysisHistoryBuffer, readTimestamp);
 
             }
-
         }
 
         synchronized (historyBuffer) {
@@ -635,6 +665,7 @@ public class SoniTalkDecoder {
     }
 
     private void analyzeMessage(float[] analysisHistoryBuffer, long readTimestamp) {
+
         int overlapForSpectrogramInSamples = winLenForSpectrogramInSamples - analysisWinStep;
         //int overlapForSpectrogramInSamples = Math.round(winLenForSpectrogramInSamples * 0.875f);
 
@@ -811,30 +842,33 @@ public class SoniTalkDecoder {
         }
         //Log.d("Decoded bit sequence", Arrays.toString(messageDecodedBySpec));
 
-        int parityCheckResult = crc.checkMessageCRC(messageDecodedBySpec/*, ConfigConstants.GENERATOR_POLYNOM*/);
-
-        if (!silentMode && parityCheckResult == 0) {
-            setLoopStopped(true);
-        }
-        notifySpectrumListeners(historyBufferFloatNormalized, parityCheckResult == 0);
-
-        // Decode message to UTF8
+        //not all decoding methods use crc.
+        //some use Reed Solomon code, so don't uses crc for those
         String decodedBitSequence = Arrays.toString(messageDecodedBySpec).replace(", ", "").replace("[","").replace("]","");
-        String bitSequenceWithoutFillingAndCRC = DecoderUtils.removeFillingCharsAndCRCChars(decodedBitSequence, ConfigConstants.GENERATOR_POLYNOM.length);
-        final byte[] receivedMessage = DecoderUtils.binaryToBytes(bitSequenceWithoutFillingAndCRC);
-
-        final long decodingTimeNanosecond = System.nanoTime()-readTimestamp;
-        //Log.d("Timing", "From read to received message: " + String.valueOf((decodingTimeNanosecond)/1000000) + "ms. CRC: " + String.valueOf(parityCheckResult));
-
-        SoniTalkMessage message = new SoniTalkMessage(receivedMessage, parityCheckResult == 0, decodingTimeNanosecond);
-
-        if (returnsRawAudio()) {
-            message.setRawAudio(convertFloatToShort(analysisHistoryBuffer));
+        final byte[] receivedMessage = DecoderUtils.binaryToBytes(decodedBitSequence);
+        SoniTalkMessage message;
+        if (crc != null) {
+            final long decodingTimeNanosecond = System.nanoTime()-readTimestamp;
+            int parityCheckResult = crc.checkMessageCRC(messageDecodedBySpec/*, ConfigConstants.GENERATOR_POLYNOM*/);
+            if (!silentMode && parityCheckResult == 0) {
+                setLoopStopped(true);
+            }
+            notifySpectrumListeners(historyBufferFloatNormalized, parityCheckResult == 0);
+            message = new SoniTalkMessage(receivedMessage, parityCheckResult == 0, decodingTimeNanosecond);
+            if (returnsRawAudio()) {
+                message.setRawAudio(convertFloatToShort(analysisHistoryBuffer));
+            }
+        } else {
+            message = new SoniTalkMessage(receivedMessage);
+            try {
+                String s = message.getDecodedMessage();
+                notifyMessageListeners(message);
+            } catch (Exception e) {
+                notifyMessageListenersOfError("Error decoding RS Error correction code. Raw received output was\n" + message.getHexString());
+            }
         }
 
-        notifyMessageListeners(message);
 
-        //Original Bitsequence for the text "Hello Sonitalk" from SoniTalk Encoder 0100100001100001011011000110110001101111001000000101001101101111011011100110100101110100011000010110110001101011000110010001100100011001000110010001110010010100
     }
 
 

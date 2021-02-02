@@ -105,6 +105,23 @@ public class EncoderUtils {
         }
     }
 
+    /**
+     * Converts a hexadecimal string into its byte array representation
+     * @param s
+     *          a hex string
+     * @return
+     *          the byte array representation of this string
+     */
+    public static byte[] hexStringToByteArray(String s) {
+        int len = s.length();
+        byte[] data = new byte[len/2];
+        for (int i = 0; i < len; i+=2) {
+            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
+                    + Character.digit(s.charAt(i+1), 16));
+        }
+        return data;
+    }
+
     public static int getMaxChars(int nMessageBlock, int nFrequencies) {
         return nMessageBlock*(nFrequencies/8)-2;
     }
