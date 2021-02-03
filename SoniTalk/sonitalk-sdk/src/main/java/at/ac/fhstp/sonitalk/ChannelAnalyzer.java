@@ -43,7 +43,7 @@ public class ChannelAnalyzer extends AudioController {
         this.channelsAvailable = new boolean[configList.size()];
         Arrays.fill(this.channelsAvailable, true);// all channels are set to available at first
         this.delayedTaskHandler = new Handler();
-        this.messageDuration = getMessageDuration();
+        this.messageDuration = configList.get(0).getMessageDurationMS();
 
     }
 
@@ -171,16 +171,6 @@ public class ChannelAnalyzer extends AudioController {
                 Log.e("test", "channel " + channelIndex + " available");
             }
         }
-    }
-
-    /**
-     * @return
-     *      How long a message takes to play in ms
-     *      for some reason it is x2??
-     */
-    private int getMessageDuration() {
-        //todo figure out why its *1.5 and not what i think it is
-        return (int) (((configList.get(0).getnMessageBlocks() + 2) * configList.get(0).getBitperiod()) * (2));
     }
 
     /**

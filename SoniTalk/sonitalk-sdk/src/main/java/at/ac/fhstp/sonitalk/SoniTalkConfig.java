@@ -107,4 +107,14 @@ public class SoniTalkConfig {
         return ((bitperiodInSamples*nBlocks+pauseperiodInSamples*(nBlocks-1)));
     }
 
+    /**
+     * @return
+     *      How long a message takes to play in ms
+     *      for some reason it is x2??
+     */
+    public int getMessageDurationMS() {
+        //todo figure out why its * 2 and not what i think it is
+        return (int) (((getnMessageBlocks() + 2) * getBitperiod()) * (2));
+    }
+
 }
