@@ -1,5 +1,7 @@
 package at.ac.fhstp.sonitalk;
 
+import android.os.Handler;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,6 +23,7 @@ public class DynamicConfiguration extends AudioController {
     private List<boolean[]> availability;
     private int currentConfigIndex;
     private boolean deescalationRequired;
+    private Handler delayedTaskHandler;
 
     public DynamicConfiguration(CircularArray historyBuffer, List<List<SoniTalkConfig>> configs) {
         super(historyBuffer, getAnalysisWindowLength(configs.get(0).get(0)));
@@ -35,6 +38,7 @@ public class DynamicConfiguration extends AudioController {
         }
         this.currentConfigIndex = 0;
         this.deescalationRequired = false;
+        this.delayedTaskHandler = new Handler();
     }
 
     @Override
@@ -78,7 +82,12 @@ public class DynamicConfiguration extends AudioController {
             }
 
             if (sumAbsResponseUpper > messageHeaderFactor * sumAbsResponseLower) {
-                availability.get(currentConfigIndex)[i] = false;//todo set equal to true in t = m_dur / 2
+                int timeoutTime = configurations.get(currentConfigIndex).get(i).getMessageDurationMS();
+                synchronized (availability.get(currentConfigIndex)) {
+                    availability.get(currentConfigIndex)[i] = false;//todo set equal to true in t = m_dur / 2
+                }
+                ConfigEscalationTimeoutRunnable runnable = new ConfigEscalationTimeoutRunnable(availability.get(currentConfigIndex), i);
+                delayedTaskHandler.postDelayed(runnable, timeoutTime);
             }
         }
     }
@@ -123,8 +132,10 @@ public class DynamicConfiguration extends AudioController {
      */
     public List<SoniTalkConfig> onPreMessageSend() {
         boolean escalationRequired = false;
-        for (int i = 0; i < availability.get(currentConfigIndex).length; i++) {
-            escalationRequired = (escalationRequired || !availability.get(currentConfigIndex)[i]);
+        synchronized (availability.get(currentConfigIndex)) {
+            for (int i = 0; i < availability.get(currentConfigIndex).length; i++) {
+                escalationRequired = (escalationRequired || !availability.get(currentConfigIndex)[i]);
+            }
         }
 
         if (escalationRequired) {
@@ -134,6 +145,25 @@ public class DynamicConfiguration extends AudioController {
         }
 
         return getCurrentConfiguration();
+    }
+
+
+    private class ConfigEscalationTimeoutRunnable implements Runnable {
+        private final boolean[] availability;
+        private final int index;
+
+        public ConfigEscalationTimeoutRunnable(boolean[] availability, int index) {
+            this.availability = availability;
+            this.index = index;
+        }
+
+        @Override
+        public void run() {
+            //ensure concurrency
+            synchronized (availability) {
+                availability[index] = true;
+            }
+        }
     }
 
 }
