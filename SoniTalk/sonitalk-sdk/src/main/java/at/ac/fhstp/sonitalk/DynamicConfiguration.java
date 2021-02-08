@@ -1,6 +1,7 @@
 package at.ac.fhstp.sonitalk;
 
 import android.os.Handler;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -118,6 +119,7 @@ public class DynamicConfiguration extends AudioController {
      * todo bounds check
      */
     public void escalateConfig() {
+        Log.e("test", "escalation");
         if (currentConfigIndex != configurations.size() -1) {
             currentConfigIndex++;
             updateDeescalationTimer();
@@ -136,6 +138,7 @@ public class DynamicConfiguration extends AudioController {
      * todo bounds check
      */
     public void deescalateConfig() {
+        Log.e("test", "deescalation");
         if (currentConfigIndex != 0) {
             currentConfigIndex--;
             updateDeescalationTimer();
