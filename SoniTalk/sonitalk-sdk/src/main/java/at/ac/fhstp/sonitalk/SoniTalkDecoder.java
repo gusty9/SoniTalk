@@ -207,6 +207,19 @@ public class SoniTalkDecoder {
         this.soniTalkContext = null;//we do not care
         bandpassWidth = DecoderUtils.getBandpassWidth(nFrequencies, frequencySpace);
         historyBufferSize = ((bitperiodInSamples*nBlocks+pauseperiodInSamples*(nBlocks-1)));
+        this.decoderThread = new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                boolean run = true;
+                while(run) {
+                    analyzeHistoryBuffer();
+                    if (Thread.currentThread().isInterrupted()) {
+                        run = false;
+                    }
+                }
+            }
+        };
     }
 
     /*package private*/SoniTalkDecoder(SoniTalkContext soniTalkContext, int sampleRate, SoniTalkConfig config) {
@@ -424,19 +437,7 @@ public class SoniTalkDecoder {
 
     public void startDecoder() {
         Log.e("test", "starting decoder thread");
-        decoderThread = new Thread() {
-            @Override
-            public void run() {
-                super.run();
-                boolean run = true;
-                while(run) {
-                    analyzeHistoryBuffer();
-                    if (Thread.currentThread().isInterrupted()) {
-                        run = false;
-                    }
-                }
-            }
-        };
+
         decoderThread.start();
     }
 

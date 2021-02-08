@@ -25,9 +25,10 @@ import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.media.audiofx.LoudnessEnhancer;
 import android.os.Build;
+import android.util.Log;
+
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
-import android.util.Log;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -58,7 +59,7 @@ public class SoniTalkSender {
     private int senderState = STATE_IDLE;
     private int Fs;
     private SoniTalkMessage currentMessage;
-    private AudioTrack currentAudioTrack;
+    private static AudioTrack currentAudioTrack; //change this to static so the garbage collector doesn't do some shit.
     private Future<?> currentFuture;
     private int maxRunCount = -1;
     private int runCount = 0;
@@ -112,84 +113,22 @@ public class SoniTalkSender {
             //Log.d("SoniTalkSender", "currentAudioTrack release");
             releaseSenderResources();
         }
-        //else sender is reused
-        Future job = executorService.submit(new Runnable() {
-            @Override
-            public void run() {
-                if ((soniTalkContext != null) && !soniTalkContext.checkSelfPermission(requestCode)) {
-                    // Make a SoniTalkException out of this ? (currently send a callback to the developer)
-                    Log.w(TAG, "SoniTalkSender requires a permission from SoniTalkContext.");
-                    return;//throw new SecurityException("SoniTalkDecoder requires a permission from SoniTalkContext. Use SoniTalkContext.checkSelfPermission() to make sure that you have the right permission.");
-                }
 
-                runCount = 0;
-                maxRunCount = nTimes;
-                int winLenSamples = message.getRawAudio().length;
-                if(winLenSamples%2 == 1){
-                    winLenSamples+=1; //if the windowSamples are odd, we have to add 1 sample because audiotrack later needs an even buffersize
-                }
-                // If we have a new message, we create an AudioTrack
-                if (currentMessage == null || !currentMessage.equals(message)) {
-                    currentAudioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, Fs, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, (winLenSamples/*+(winLenSamples/65)*/) * 2, AudioTrack.MODE_STATIC); //creating the audiotrack player with winLenSamples*2 as the buffersize because the constructor wants bytes
-                }
-                currentMessage = message;
+        int winLenSamples = message.getRawAudio().length;
+        if(winLenSamples%2 == 1){
+            winLenSamples+=1; //if the windowSamples are odd, we have to add 1 sample because audiotrack later needs an even buffersize
+        }
 
-                currentAudioTrack.setNotificationMarkerPosition(winLenSamples);
+        if (currentMessage == null || !currentMessage.equals(message)) {
+            currentAudioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, Fs, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, (winLenSamples/*+(winLenSamples/65)*/) * 2, AudioTrack.MODE_STREAM); //creating the audiotrack player with winLenSamples*2 as the buffersize because the constructor wants bytes
+        }
 
-                currentAudioTrack.setPlaybackPositionUpdateListener(new AudioTrack.OnPlaybackPositionUpdateListener(){
-                    @Override
-                    public void onMarkerReached(AudioTrack arg0) {
-                        if (soniTalkContext != null) {
-                            soniTalkContext.cancelNotificationSending();
-                        }
-                        // TODO: Callback to signal message sent ? (different from sending job end). Would we then also need a callback when we start sending the next one ?
+        LoudnessEnhancer enhancer = new LoudnessEnhancer(currentAudioTrack.getAudioSessionId());
+        enhancer.setTargetGain(700);
+        enhancer.setEnabled(true);
+        int result = currentAudioTrack.write(message.getRawAudio(), 0, (winLenSamples/*+(winLenSamples/65)*/)); //put the whiteNoise shortarray into the player, buffersize winLenSamples are Shorts here
+        currentAudioTrack.play();
 
-                        runCount++;
-                        if (maxRunCount <= runCount) {
-                            cancel();
-                        } else {
-                            currentAudioTrack.stop();
-                            currentAudioTrack.flush();
-                            currentAudioTrack.reloadStaticData();
-                            // For fine grained state, put IDLE here and SENDING after the play(). This may lead to overlaps.
-                            Future job = executorService.schedule(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if (soniTalkContext != null) {
-                                        soniTalkContext.showNotificationSending();
-                                    }
-                                    currentAudioTrack.play();
-                                }
-                            }, interval, timeUnit);
-                            currentFuture = job;
-                        }
-                    }
-                    @Override
-                    public void onPeriodicNotification(AudioTrack arg0) {}
-                });
-                // Increase the loudness of our signal
-                LoudnessEnhancer enhancer = new LoudnessEnhancer(currentAudioTrack.getAudioSessionId());
-                enhancer.setTargetGain(700);
-                enhancer.setEnabled(true);
-
-                /* Do we want to handle the audio volume here ? Then pass context ?
-                AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-                audioManager.setStreamVolume(3, (int) Math.round((audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) * volume/100.0D)), 0);
-                */
-                // Should we handle potential errors (negative results)
-                int result = currentAudioTrack.write(message.getRawAudio(), 0, (winLenSamples/*+(winLenSamples/65)*/)); //put the whiteNoise shortarray into the player, buffersize winLenSamples are Shorts here
-
-                if (soniTalkContext != null) {
-                    soniTalkContext.showNotificationSending();
-                }
-                setSenderState(STATE_SENDING);
-                currentAudioTrack.play();
-            }
-        });
-        currentFuture = job;
-
-
-        //return job;
     }
 
     /**

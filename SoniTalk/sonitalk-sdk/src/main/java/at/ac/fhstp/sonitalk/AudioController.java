@@ -1,5 +1,7 @@
 package at.ac.fhstp.sonitalk;
 
+import android.util.Log;
+
 import at.ac.fhstp.sonitalk.utils.CircularArray;
 
 /**
@@ -13,7 +15,7 @@ public abstract class AudioController {
 
     private final CircularArray historyBuffer;
     private boolean isAnalyzing;
-    private Thread analysisThread;
+    private final Thread analysisThread;
     private int analysisWindowLength;
 
     /**
@@ -23,10 +25,27 @@ public abstract class AudioController {
      * @param analysisWindowLength
      *          how much of the buffer should be analyzed at a time
      */
-    public AudioController(CircularArray historyBuffer, int analysisWindowLength) {
+    public AudioController(final CircularArray historyBuffer, final int analysisWindowLength) {
         this.historyBuffer = historyBuffer;
         this.isAnalyzing = false;
         this.analysisWindowLength = analysisWindowLength;
+        this.analysisThread = new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                boolean run = true;
+                float[] analysisHistoryBuffer;
+                while (run) {
+                    synchronized (AudioController.this.historyBuffer) {//please ffs
+                        analysisHistoryBuffer = historyBuffer.getLastWindow(analysisWindowLength);
+                    }
+                    analyzeSamples(analysisHistoryBuffer);
+                    if (Thread.currentThread().isInterrupted()) {
+                        run = false;
+                    }
+                }
+            }
+        };
     }
 
     /**
@@ -34,24 +53,6 @@ public abstract class AudioController {
      */
     public void startAnalysis() {
         isAnalyzing = true;
-        analysisThread = new Thread() {
-            @Override
-            public void run() {
-                super.run();
-                boolean run = true;
-                float[] analysisHistoryBuffer;
-                while (run) {
-                    synchronized (historyBuffer) {
-                        analysisHistoryBuffer = historyBuffer.getLastWindow(analysisWindowLength);
-                    }
-                    analyzeSamples(analysisHistoryBuffer);
-                }
-
-                if (Thread.currentThread().isInterrupted()) {
-                    run = false;
-                }
-            }
-        };
         analysisThread.start();
     }
 

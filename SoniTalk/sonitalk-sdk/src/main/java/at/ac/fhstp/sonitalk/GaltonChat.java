@@ -29,7 +29,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     private final CircularArray historyBuffer;//this is NOT thread safe. wrap in 'synchronized' block when accessing
     private int audioRecorderBufferSize;
     private AudioRecord audioRecord;
-    private Thread recordingThread;
+    private final Thread recordingThread;
     private boolean isRecording;
     private ChannelAnalyzer channelAnalyzer;
     private DynamicConfiguration dynamicConfiguration;
@@ -59,6 +59,32 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
                 this.decoderList.add(decoder);
             }
         }
+
+        this.recordingThread = new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                boolean run = true;//flag for exiting while loop
+                audioRecord.startRecording();
+                short[] temp = new short[audioRecorderBufferSize];
+                float[] current = new float[audioRecorderBufferSize];
+                while (run) {
+                    //read in the data
+                    int bytesRead = audioRecord.read(temp, 0 , audioRecorderBufferSize);
+                    if (bytesRead == audioRecorderBufferSize) { //ensure we read enough bytes
+                        synchronized (GaltonChat.this.historyBuffer) {
+                            convertShortToFloat(temp, current, audioRecorderBufferSize);
+                            historyBuffer.add(current);
+                        }
+                    }
+                    //check to see if the recording thread should be stopped
+                    if (Thread.currentThread().isInterrupted()) {
+                        run = false;
+                        audioRecord.stop();
+                    }
+                }
+            }
+        };
 
     }
 
@@ -124,31 +150,6 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      */
     public void startListeningThread() {
         isRecording = true;
-        recordingThread = new Thread() {
-            @Override
-            public void run() {
-                super.run();
-                boolean run = true;//flag for exiting while loop
-                audioRecord.startRecording();
-                short[] temp = new short[audioRecorderBufferSize];
-                float[] current = new float[audioRecorderBufferSize];
-                while (run) {
-                    //read in the data
-                    int bytesRead = audioRecord.read(temp, 0 , audioRecorderBufferSize);
-                    if (bytesRead == audioRecorderBufferSize) { //ensure we read enough bytes
-                        synchronized (historyBuffer) {
-                            convertShortToFloat(temp, current, audioRecorderBufferSize);
-                            historyBuffer.add(current);
-                        }
-                    }
-                    //check to see if the recording thread should be stopped
-                    if (Thread.currentThread().isInterrupted()) {
-                        run = false;
-                        audioRecord.stop();
-                    }
-                }
-            }
-        };
         recordingThread.start();
         channelAnalyzer.startAnalysis();
         for (int i = 0; i < decoderList.size(); i++) {
