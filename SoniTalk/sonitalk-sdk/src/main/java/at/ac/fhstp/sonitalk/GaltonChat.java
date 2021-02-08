@@ -23,7 +23,6 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     private final int SONITALK_SENDER_REQUEST_CODE = 2;//todo uhh not sure what the request code is for but 2 works
 
     //configuration variables
-    private List<SoniTalkConfig> configList;
     private List<SoniTalkDecoder> decoderList;
 
     //audio recording
@@ -33,30 +32,32 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     private Thread recordingThread;
     private boolean isRecording;
     private ChannelAnalyzer channelAnalyzer;
+    private DynamicConfiguration dynamicConfiguration;
 
     /**
      * Constructor. Each config should represent and individual non-overlapping channel
      * @param configs
      *          each channel configuration
      */
-    public GaltonChat(SoniTalkConfig... configs) {
+    public GaltonChat(List<List<SoniTalkConfig>> configs) {
         //init config variables
-        this.configList = new ArrayList<>();
-        this.configList.addAll(Arrays.asList(configs));
 
         //init audio recording variables
-        this.historyBuffer = new CircularArray(getLargestRequiredBufferSize());
-        this.channelAnalyzer = new ChannelAnalyzer(configList, historyBuffer);
+        this.historyBuffer = new CircularArray(getLargestRequiredBufferSize(configs));
+        this.dynamicConfiguration = new DynamicConfiguration(historyBuffer, configs);
+        this.channelAnalyzer = new ChannelAnalyzer(dynamicConfiguration, historyBuffer);
         this.audioRecorderBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
         this.audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, audioRecorderBufferSize);
         this.isRecording = false;
 
         //decoding variables
         this.decoderList = new ArrayList<>();
-        for (int i = 0; i < configList.size(); i++) {
-            SoniTalkDecoder decoder = new SoniTalkDecoder(configList.get(i), historyBuffer);
-            decoder.addMessageListener(this);
-            this.decoderList.add(decoder);
+        for (int j = 0; j < configs.size(); j++) {
+            for (int i = 0; i < configs.get(j).size(); i++) {
+                SoniTalkDecoder decoder = new SoniTalkDecoder(configs.get(j).get(i), historyBuffer);
+                decoder.addMessageListener(this);
+                this.decoderList.add(decoder);
+            }
         }
 
     }
@@ -73,7 +74,6 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         if (channelToSend != -1) {
             //do not care about context, pass null
             SoniTalkSender sender = new SoniTalkSender(null);
-            SoniTalkMessage soniTalkmsg = new SoniTalkMessage(message);
             sender.send(encodeMessage(message, channelToSend), SONITALK_SENDER_REQUEST_CODE);
         } else {
             //all channels were occupied. Do something?
@@ -92,7 +92,14 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      */
     private SoniTalkMessage encodeMessage(String message, int channel) {
         //we don't care about permissions so just make the context null
+        List<SoniTalkConfig> configList = dynamicConfiguration.getCurrentConfiguration();
         SoniTalkEncoder encoder = new SoniTalkEncoder(null, configList.get(channel));
+        return encoder.messageAsHexByteString(message);
+    }
+
+    private SoniTalkMessage encodeMessage(String message, int config, int channel) {
+        SoniTalkConfig sendingConfig = dynamicConfiguration.getConfigurations().get(config).get(channel);
+        SoniTalkEncoder encoder = new SoniTalkEncoder(null, sendingConfig);
         return encoder.messageAsHexByteString(message);
     }
 
@@ -161,13 +168,19 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     //method used for testing
     public void sendChannel0(String message) {
         SoniTalkSender sender = new SoniTalkSender(null);
-        sender.send(encodeMessage(message, 0), SONITALK_SENDER_REQUEST_CODE);
+        sender.send(encodeMessage(message, 0, 0), SONITALK_SENDER_REQUEST_CODE);
     }
 
     //method used for testing
     public void sendChannel1(String message) {
         SoniTalkSender sender = new SoniTalkSender(null);
-        sender.send(encodeMessage(message, 1), SONITALK_SENDER_REQUEST_CODE);
+        sender.send(encodeMessage(message, 1,0), SONITALK_SENDER_REQUEST_CODE);
+    }
+
+    //method used for testing
+    public void sendChannel2(String message) {
+        SoniTalkSender sender = new SoniTalkSender(null);
+        sender.send(encodeMessage(message, 1,1), SONITALK_SENDER_REQUEST_CODE);
     }
 
     /**
@@ -176,15 +189,9 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      * @return
      *          The size of the history buffer
      */
-    private int getLargestRequiredBufferSize() {
-        int bufferSize = -1;
-        for (int i = 0; i < configList.size(); i++) {
-            int temp = configList.get(i).getHistoryBufferSize(SAMPLE_RATE);
-            if (temp > bufferSize) {
-                bufferSize = temp;
-            }
-        }
-        return bufferSize;
+    private int getLargestRequiredBufferSize(List<List<SoniTalkConfig>> configList) {
+        //by convention the largest buffer size should simply be the last one in the list (slowest channel)
+        return configList.get(configList.size() -1).get(configList.get(configList.size()-1).size() -1 ).getHistoryBufferSize(SAMPLE_RATE);
     }
 
     /**

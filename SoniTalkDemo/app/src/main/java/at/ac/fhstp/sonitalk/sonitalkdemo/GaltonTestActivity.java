@@ -8,6 +8,9 @@ import android.widget.Button;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import at.ac.fhstp.sonitalk.GaltonChat;
 import at.ac.fhstp.sonitalk.SoniTalkConfig;
 import at.ac.fhstp.sonitalk.utils.ConfigFactory;
@@ -18,6 +21,7 @@ public class GaltonTestActivity extends AppCompatActivity {
     private Button startListeningButton;
     private Button sendChannel0Button;
     private Button sendChannel1Button;
+    private Button sendChannel2Button;
     private Button sendAlgoButton;
 
     private GaltonChat galton;
@@ -30,13 +34,23 @@ public class GaltonTestActivity extends AppCompatActivity {
         startListeningButton = findViewById(R.id.start_listen);
         sendChannel0Button = findViewById(R.id.channel_0);
         sendChannel1Button = findViewById(R.id.channel_1);
+        sendChannel2Button = findViewById(R.id.channel_2);
         sendAlgoButton = findViewById(R.id.algo_send);
 
         //create the api object
         try {
+            SoniTalkConfig channel0 = ConfigFactory.loadFromJson("channel0.json", this);
+            List<SoniTalkConfig> config0 = new ArrayList<>();
+            config0.add(channel0);
             SoniTalkConfig channel1 = ConfigFactory.loadFromJson("channel1.json", this);
             SoniTalkConfig channel2 = ConfigFactory.loadFromJson("channel2.json", this);
-            galton = new GaltonChat(channel1, channel2);
+            List<SoniTalkConfig> config1 = new ArrayList<>();
+            config1.add(channel1);
+            config1.add(channel2);
+            List<List<SoniTalkConfig>> configs = new ArrayList<>();
+            configs.add(config0);
+            configs.add(config1);
+            galton = new GaltonChat(configs);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -60,6 +74,13 @@ public class GaltonTestActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 galton.sendChannel1(generateNewMessage());
+            }
+        });
+
+        sendChannel2Button.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                galton.sendChannel2(generateNewMessage());
             }
         });
 

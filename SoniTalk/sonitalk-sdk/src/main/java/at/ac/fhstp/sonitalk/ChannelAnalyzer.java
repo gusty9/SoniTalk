@@ -21,30 +21,28 @@ import uk.me.berndporr.iirj.Butterworth;
  * and determining which channels are available
  * @author Erik Gustafson
  */
-public class ChannelAnalyzer extends AudioController {
+public class ChannelAnalyzer extends AudioController implements DynamicConfiguration.ConfigurationChangeListener {
     private final int bandpassFilterOrder = 8;//todo figure out what this does
     private final int messageHeaderFactor = 4;//todo test this a little bit more
 
-    private final List<SoniTalkConfig> configList;
-    private final boolean[] channelsAvailable;
+    private boolean[] channelsAvailable;
     private int messageDuration;//milliseconds
     private Handler delayedTaskHandler;
+    private DynamicConfiguration dynamicConfiguration;
 
     /**
-     * @param configList
-     *          List of configurations to track the occupancy of
+     * @param dynamicConfiguration
+     *          reference to the dynamic configuration object
      * @param historyBuffer
      *          Reference to the microphone history buffer
      */
-    public ChannelAnalyzer(List<SoniTalkConfig> configList, CircularArray historyBuffer) {
-        super(historyBuffer, getAnalysisWindowLength(configList.get(0)));
-        this.configList = new ArrayList<>();
-        this.configList.addAll(configList);//create of the config, don't use the same reference
-        this.channelsAvailable = new boolean[configList.size()];
+    public ChannelAnalyzer(DynamicConfiguration dynamicConfiguration, CircularArray historyBuffer) {
+        super(historyBuffer, dynamicConfiguration.getAnalysisWindowLength());
+        this.dynamicConfiguration = dynamicConfiguration;
+        this.channelsAvailable = new boolean[dynamicConfiguration.sizeCurrentConfig()];
         Arrays.fill(this.channelsAvailable, true);// all channels are set to available at first
         this.delayedTaskHandler = new Handler();
-        this.messageDuration = configList.get(0).getMessageDurationMS();
-
+        this.messageDuration = dynamicConfiguration.getCurrentMessageLength();
     }
 
     /**
@@ -55,6 +53,7 @@ public class ChannelAnalyzer extends AudioController {
      */
     @Override
     void analyzeSamples(float[] analysisHistoryBuffer) {
+        List<SoniTalkConfig> configList = dynamicConfiguration.getCurrentConfiguration();
         for (int i = 0; i < configList.size(); i++) {
             boolean available;
             synchronized (channelsAvailable) {
@@ -142,6 +141,14 @@ public class ChannelAnalyzer extends AudioController {
         //return a random index of available channels
         return getRandomItemFromList(channelAvailableIndices);
     }
+
+    @Override
+    public void onConfigurationChange() {
+        this.channelsAvailable = new boolean[dynamicConfiguration.sizeCurrentConfig()];
+        Arrays.fill(channelsAvailable, true);
+        this.messageDuration = dynamicConfiguration.getCurrentMessageLength();
+    }
+
 
     /**
      * private inner class used to set a channel back to available after

@@ -24,6 +24,14 @@ public class DynamicConfiguration extends AudioController {
     private int currentConfigIndex;
     private boolean deescalationRequired;
     private Handler delayedTaskHandler;
+    private int deescalationTimer;
+    private long lastBothOccupiedTime;
+
+    private ConfigurationChangeListener callback;
+
+    public interface ConfigurationChangeListener {
+        public void onConfigurationChange();
+    }
 
     public DynamicConfiguration(CircularArray historyBuffer, List<List<SoniTalkConfig>> configs) {
         super(historyBuffer, getAnalysisWindowLength(configs.get(0).get(0)));
@@ -39,6 +47,8 @@ public class DynamicConfiguration extends AudioController {
         this.currentConfigIndex = 0;
         this.deescalationRequired = false;
         this.delayedTaskHandler = new Handler();
+        this.deescalationTimer = configs.get(currentConfigIndex).get(0).getMessageDurationMS() * 2;
+        this.lastBothOccupiedTime = -1;//prevent nulls
     }
 
     @Override
@@ -84,12 +94,14 @@ public class DynamicConfiguration extends AudioController {
             if (sumAbsResponseUpper > messageHeaderFactor * sumAbsResponseLower) {
                 int timeoutTime = configurations.get(currentConfigIndex).get(i).getMessageDurationMS();
                 synchronized (availability.get(currentConfigIndex)) {
-                    availability.get(currentConfigIndex)[i] = false;//todo set equal to true in t = m_dur / 2
+                    availability.get(currentConfigIndex)[i] = false;
                 }
                 ConfigEscalationTimeoutRunnable runnable = new ConfigEscalationTimeoutRunnable(availability.get(currentConfigIndex), i);
                 delayedTaskHandler.postDelayed(runnable, timeoutTime);
             }
         }
+        //check for deescalation
+        deescalationCheck();
     }
 
     /**
@@ -108,8 +120,15 @@ public class DynamicConfiguration extends AudioController {
     public void escalateConfig() {
         if (currentConfigIndex != configurations.size() -1) {
             currentConfigIndex++;
+            updateDeescalationTimer();
+            callback.onConfigurationChange();
         }
     }
+
+    public List<List<SoniTalkConfig>> getConfigurations() {
+        return this.configurations;
+    }
+
 
     /**
      * deescalate the current configuration to the previous one
@@ -119,8 +138,9 @@ public class DynamicConfiguration extends AudioController {
     public void deescalateConfig() {
         if (currentConfigIndex != 0) {
             currentConfigIndex--;
+            updateDeescalationTimer();
+            callback.onConfigurationChange();
         }
-
     }
 
     /**
@@ -147,7 +167,47 @@ public class DynamicConfiguration extends AudioController {
         return getCurrentConfiguration();
     }
 
+    /**
+     * update the deescalation timer to match the current configuration
+     */
+    private void updateDeescalationTimer() {
+        deescalationTimer = configurations.get(currentConfigIndex).get(0).getMessageDurationMS();
+    }
 
+    private void deescalationCheck() {
+        boolean bothOccupied = true;
+        synchronized (availability.get(currentConfigIndex)) {
+            for (int i = 0; i < availability.get(currentConfigIndex).length; i++) {
+                bothOccupied = bothOccupied && !availability.get(currentConfigIndex)[i];
+            }
+        }
+        if (bothOccupied) {
+            lastBothOccupiedTime = System.currentTimeMillis();
+        }
+        if ((lastBothOccupiedTime != -1) && System.currentTimeMillis() - lastBothOccupiedTime > deescalationTimer) {
+            deescalateConfig();
+        }
+    }
+
+    public int getAnalysisWindowLength() {
+        return getAnalysisWindowLength(configurations.get(currentConfigIndex).get(0));
+    }
+
+    public int sizeCurrentConfig() {
+        return configurations.get(currentConfigIndex).size();
+    }
+
+    public int getCurrentMessageLength() {
+        return configurations.get(currentConfigIndex).get(0).getMessageDurationMS();
+    }
+
+    public void addConfigChangeListener(ConfigurationChangeListener listener) {
+        this.callback = listener;
+    }
+
+    /**
+     * Set flags back to true after a certain timer timeout
+     */
     private class ConfigEscalationTimeoutRunnable implements Runnable {
         private final boolean[] availability;
         private final int index;
@@ -165,5 +225,4 @@ public class DynamicConfiguration extends AudioController {
             }
         }
     }
-
 }
