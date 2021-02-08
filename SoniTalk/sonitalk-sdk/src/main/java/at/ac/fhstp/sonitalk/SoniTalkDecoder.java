@@ -527,7 +527,8 @@ public class SoniTalkDecoder {
 
         float analysisHistoryBuffer[];
         synchronized (historyBuffer) {
-            analysisHistoryBuffer = historyBuffer.getArray();
+            //see if this works?
+            analysisHistoryBuffer = historyBuffer.getLastWindow(config.getHistoryBufferSize(GaltonChat.SAMPLE_RATE));
         }
 
         float firstWindow[] = new float[analysisWinLen];
@@ -658,10 +659,6 @@ public class SoniTalkDecoder {
                 analyzeMessage(analysisHistoryBuffer, readTimestamp);
 
             }
-        }
-
-        synchronized (historyBuffer) {
-            historyBuffer.incrementAnalysisIndex(analysisWinStep);
         }
     }
 
