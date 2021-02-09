@@ -55,7 +55,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         this.decoderList = new ArrayList<>();
         for (int j = 0; j < configs.size(); j++) {
             for (int i = 0; i < configs.get(j).size(); i++) {
-                SoniTalkDecoder decoder = new SoniTalkDecoder(configs.get(j).get(i), historyBuffer);
+                SoniTalkDecoder decoder = new SoniTalkDecoder(configs.get(j).get(i), historyBuffer, j, i);
                 decoder.addMessageListener(this);
                 this.decoderList.add(decoder);
             }
@@ -137,13 +137,15 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      * @param receivedMessage message detected and received by the SDK.
      */
     @Override
-    public void onMessageReceived(SoniTalkMessage receivedMessage) {
+    public void onMessageReceived(SoniTalkMessage receivedMessage, int configIndex, int channelIndex) {
         Log.e("GaltonChat Message Received", receivedMessage.getDecodedMessage());
+        dynamicConfiguration.onMessageReceived(configIndex);
     }
 
     @Override
-    public void onDecoderError(String errorMessage) {
+    public void onDecoderError(String errorMessage, int configIndex, int channelIndex) {
         Log.e("GaltonChat", errorMessage);
+        //dynamicConfiguration.onMessageReceived(configIndex);
     }
 
     /**

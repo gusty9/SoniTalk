@@ -68,14 +68,18 @@ public class SoniTalkDecoder {
         /**
          * Called when a message is received by the SoniTalkDecoder.
          * @param receivedMessage message detected and received by the SDK.
+         * @param configIndex the index for which configuration the message was found
+         * @param channelIndex the index for which channel the message was found
          */
-        void onMessageReceived(SoniTalkMessage receivedMessage);
+        void onMessageReceived(SoniTalkMessage receivedMessage, int configIndex, int channelIndex);
 
         /**
          * Called when an error and/or exception occur in the SoniTalkDecoder.
          * @param errorMessage description of an error that occurred while trying to receive a message.
+         * @param configIndex the index for which configuration the message was found
+         * @param channelIndex the index for which channel the message was found
          */
-        void onDecoderError(String errorMessage);
+        void onDecoderError(String errorMessage, int configIndex, int channelIndex);
     }
 
     /**
@@ -149,6 +153,8 @@ public class SoniTalkDecoder {
     private int addedLen;
 
     private final CircularArray historyBuffer;
+    private int configIndex;
+    private int channelIndex;
 
     private boolean loopStopped = false;
     private Handler delayhandler = new Handler();
@@ -165,7 +171,7 @@ public class SoniTalkDecoder {
      * @param config
      * @param historyBuffer
      */
-    SoniTalkDecoder(SoniTalkConfig config, CircularArray historyBuffer) {
+    SoniTalkDecoder(SoniTalkConfig config, CircularArray historyBuffer, int configIndex, int channelIndex) {
         this.Fs = GaltonChat.SAMPLE_RATE;
         this.config = config;
 
@@ -204,6 +210,8 @@ public class SoniTalkDecoder {
         nAnalysisWindowsPerPause =  Math.round(pauseperiodInSamples/(float)analysisWinStep) ; //number of analysis windows during a pause
         addedLen = analysisWinLen; // Needed for stepping analysis
         this.historyBuffer = historyBuffer;
+        this.configIndex = configIndex;
+        this.channelIndex = channelIndex;
         this.soniTalkContext = null;//we do not care
         bandpassWidth = DecoderUtils.getBandpassWidth(nFrequencies, frequencySpace);
         historyBufferSize = ((bitperiodInSamples*nBlocks+pauseperiodInSamples*(nBlocks-1)));
@@ -1073,13 +1081,13 @@ public class SoniTalkDecoder {
 
     private void notifyMessageListeners(SoniTalkMessage decodedMessage) {
         for(MessageListener listener: messageListeners) {
-            listener.onMessageReceived(decodedMessage);
+            listener.onMessageReceived(decodedMessage, configIndex, channelIndex);
         }
     }
 
     private void notifyMessageListenersOfError(String errorMessage) {
         for(MessageListener listener: messageListeners) {
-            listener.onDecoderError(errorMessage);
+            listener.onDecoderError(errorMessage, configIndex, channelIndex);
         }
     }
 

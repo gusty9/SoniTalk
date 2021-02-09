@@ -102,7 +102,7 @@ public class DynamicConfiguration extends AudioController {
             }
         }
         //check for deescalation
-        deescalationCheck();
+        //deescalationCheck();
     }
 
     /**
@@ -119,8 +119,8 @@ public class DynamicConfiguration extends AudioController {
      * todo bounds check
      */
     public void escalateConfig() {
-        Log.e("test", "escalation");
         if (currentConfigIndex != configurations.size() -1) {
+            Log.e("DynamicConfig", "Channel Escalation");
             currentConfigIndex++;
             updateDeescalationTimer();
             callback.onConfigurationChange();
@@ -138,8 +138,8 @@ public class DynamicConfiguration extends AudioController {
      * todo bounds check
      */
     public void deescalateConfig() {
-        Log.e("test", "deescalation");
         if (currentConfigIndex != 0) {
+            Log.e("DynamicConfig", "Channel Deescalation");
             currentConfigIndex--;
             updateDeescalationTimer();
             callback.onConfigurationChange();
@@ -153,7 +153,7 @@ public class DynamicConfiguration extends AudioController {
      * @return
      *      The determined configuration for sending
      */
-    public List<SoniTalkConfig> onPreMessageSend() {
+    public void onPreMessageSend() {
         boolean escalationRequired = false;
         synchronized (availability.get(currentConfigIndex)) {
             for (int i = 0; i < availability.get(currentConfigIndex).length; i++) {
@@ -166,8 +166,14 @@ public class DynamicConfiguration extends AudioController {
         } else if (deescalationRequired) {
             deescalateConfig();
         }
+    }
 
-        return getCurrentConfiguration();
+    public void onMessageReceived(int configIndex) {
+        if (configIndex > currentConfigIndex) {
+            escalateConfig();
+        } else if (configIndex < currentConfigIndex) {
+            deescalateConfig();
+        }
     }
 
     /**
