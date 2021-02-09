@@ -528,7 +528,7 @@ public class MainActivity extends BaseActivity implements SoniTalkDecoder.Messag
     }
 
     @Override
-    public void onMessageReceived(final SoniTalkMessage receivedMessage) {
+    public void onMessageReceived(final SoniTalkMessage receivedMessage, int a, int b) {
         long timeNow = System.nanoTime();
         Log.d(TAG, "onMessageReceived: " + timeNow);
         Log.d(TAG, "onMessageReceived: " + timeLastCorrectMessageReceived);
@@ -577,7 +577,7 @@ public class MainActivity extends BaseActivity implements SoniTalkDecoder.Messag
     }
 
     @Override
-    public void onDecoderError(final String errorMessage) {
+    public void onDecoderError(final String errorMessage, int a, int b) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
