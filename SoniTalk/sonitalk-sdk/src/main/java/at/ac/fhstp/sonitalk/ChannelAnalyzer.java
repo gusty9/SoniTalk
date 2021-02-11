@@ -26,6 +26,7 @@ public class ChannelAnalyzer extends AudioController implements DynamicConfigura
     private final int messageHeaderFactor = 4;//todo test this a little bit more
 
     private boolean[] channelsAvailable;
+    private final Object mutex;
     private int messageDuration;//milliseconds
     private Handler delayedTaskHandler;
     private DynamicConfiguration dynamicConfiguration;
@@ -41,6 +42,7 @@ public class ChannelAnalyzer extends AudioController implements DynamicConfigura
         this.dynamicConfiguration = dynamicConfiguration;
         this.channelsAvailable = new boolean[dynamicConfiguration.sizeCurrentConfig()];
         Arrays.fill(this.channelsAvailable, true);// all channels are set to available at first
+        mutex = new Object();
         this.delayedTaskHandler = new Handler();
         this.messageDuration = dynamicConfiguration.getCurrentMessageLength();
     }
@@ -56,7 +58,8 @@ public class ChannelAnalyzer extends AudioController implements DynamicConfigura
         List<SoniTalkConfig> configList = dynamicConfiguration.getCurrentConfiguration();
         for (int i = 0; i < configList.size(); i++) {
             boolean available;
-            synchronized (channelsAvailable) {
+            synchronized (mutex) {
+                //todo figure out race condition that can cause this to out of bounds
                 available =  channelsAvailable[i];
             }
             //don't run the analysis if the channel is occupied.
@@ -101,9 +104,9 @@ public class ChannelAnalyzer extends AudioController implements DynamicConfigura
                 if (sumAbsResponseUpper > messageHeaderFactor * sumAbsResponseLower) {
                     //if this is true, a message block was found in the most recently added samples to the buffer
                     //set this channel to occupied and set a timer to reset the channel
-                    synchronized (channelsAvailable) {
+                    synchronized (mutex) {
                         channelsAvailable[i] = false;
-                        Log.e("channel " + i, "lower: " + sumAbsResponseLower + " upper: " + sumAbsResponseUpper);
+                        Log.e(GaltonChat.TAG, "channel " + i + " lower: " + sumAbsResponseLower + " upper: " + sumAbsResponseUpper);
                     }
                     ChannelAvailableRunnable waitMessageDuration = new ChannelAvailableRunnable(channelsAvailable, i);
                     delayedTaskHandler.postDelayed(waitMessageDuration, messageDuration);
@@ -120,7 +123,7 @@ public class ChannelAnalyzer extends AudioController implements DynamicConfigura
     public int getSendingChannel() {
         List<Integer> channelAvailableIndices = new ArrayList<>();
         boolean[] channelsAvailableCpy = new boolean[channelsAvailable.length];
-        synchronized (channelsAvailable) {
+        synchronized (mutex) {
             System.arraycopy(channelsAvailable, 0, channelsAvailableCpy, 0, channelsAvailable.length);
         }
         for (int i = 0; i < channelsAvailableCpy.length; i++) {
@@ -144,8 +147,10 @@ public class ChannelAnalyzer extends AudioController implements DynamicConfigura
 
     @Override
     public void onConfigurationChange() {
-        this.channelsAvailable = new boolean[dynamicConfiguration.sizeCurrentConfig()];
-        Arrays.fill(channelsAvailable, true);
+        synchronized (mutex) {
+            this.channelsAvailable = new boolean[dynamicConfiguration.sizeCurrentConfig()];
+            Arrays.fill(channelsAvailable, true);
+        }
         this.messageDuration = dynamicConfiguration.getCurrentMessageLength();
     }
 
@@ -172,10 +177,10 @@ public class ChannelAnalyzer extends AudioController implements DynamicConfigura
         @Override
         public void run() {
             //set the channel to available when this is ran
-            synchronized (channels) {
+            synchronized (mutex) {
                 //ensure concurrency
                 channels[channelIndex] = true;
-                Log.e("test", "channel " + channelIndex + " available");
+                Log.e(GaltonChat.TAG, "channel " + channelIndex + " available");
             }
         }
     }

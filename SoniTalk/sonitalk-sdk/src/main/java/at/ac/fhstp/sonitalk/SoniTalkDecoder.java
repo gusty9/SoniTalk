@@ -444,7 +444,7 @@ public class SoniTalkDecoder {
     }
 
     public void startDecoder() {
-        Log.e("test", "starting decoder thread");
+        Log.e(TAG, "starting decoder thread");
 
         decoderThread.start();
     }

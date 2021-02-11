@@ -18,6 +18,7 @@ import marytts.util.math.Hilbert;
  * @author Erik Gustafson
  */
 public class GaltonChat implements SoniTalkDecoder.MessageListener {
+    public static final String TAG = "GaltonChat";
     //minimum readable frequency = SAMPLE_RATE/2 = 22050
     public static final int SAMPLE_RATE = 44100;//should work with ~most~ devices
     private final int SONITALK_SENDER_REQUEST_CODE = 2;//todo uhh not sure what the request code is for but 2 works
@@ -97,7 +98,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      *          The hexadecimal string message to send
      */
     public void sendMessage(String message) {
-        dynamicConfiguration.onPreMessageSend();
+        //dynamicConfiguration.onPreMessageSend();
         int channelToSend = channelAnalyzer.getSendingChannel();
         if (channelToSend != -1) {
             //do not care about context, pass null
@@ -105,7 +106,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
             sender.send(encodeMessage(message, channelToSend), SONITALK_SENDER_REQUEST_CODE);
         } else {
             //all channels were occupied. Do something?
-            Log.e("GaltonChat", "all channels are occupied");
+            Log.e(TAG, "all channels are occupied");
         }
     }
 
@@ -138,13 +139,14 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      */
     @Override
     public void onMessageReceived(SoniTalkMessage receivedMessage, int configIndex, int channelIndex) {
-        Log.e("GaltonChat Message Received", receivedMessage.getDecodedMessage());
+        Log.e(TAG, receivedMessage.getDecodedMessage() + " config " + configIndex + " channel " + channelIndex);
         dynamicConfiguration.onMessageReceived(configIndex);
     }
 
     @Override
     public void onDecoderError(String errorMessage, int configIndex, int channelIndex) {
-        Log.e("GaltonChat", errorMessage);
+        Log.e(TAG, errorMessage + " on config " + configIndex + " channel "+ channelIndex);
+        //todo consider what to do with error messages..?
         //dynamicConfiguration.onMessageReceived(configIndex);
     }
 
