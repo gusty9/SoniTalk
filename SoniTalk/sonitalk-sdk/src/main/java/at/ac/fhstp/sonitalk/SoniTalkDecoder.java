@@ -449,6 +449,10 @@ public class SoniTalkDecoder {
         decoderThread.start();
     }
 
+    public void stopDecoder() {
+        decoderThread.interrupt();
+    }
+
     /**
      * Converts an input array from short to [-1.0;1.0] float, result is put into the (pre-allocated) output array
      * @param input

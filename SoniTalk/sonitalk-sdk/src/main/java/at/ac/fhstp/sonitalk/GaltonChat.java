@@ -170,6 +170,10 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     public void stopListeningThread() {
         isRecording = false;
         channelAnalyzer.stopAnalysis();//stop the channel analyzer
+        dynamicConfiguration.stopAnalysis();
+        for (int i = 0; i < decoderList.size(); i++) {
+            decoderList.get(i).stopDecoder();
+        }
         recordingThread.interrupt();//tell the thread to stop
     }
 
