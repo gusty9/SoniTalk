@@ -18,6 +18,18 @@ import marytts.util.math.Hilbert;
  * @author Erik Gustafson
  */
 public class GaltonChat implements SoniTalkDecoder.MessageListener {
+
+    public interface MessageCallback {
+        /**
+         * This is NOT called on the UI THREAD!!!!
+         * if you would like to update the UI with the result of this call back you must
+         * call runOnUiThread(new Runnable(){})!!!!
+         * @param message
+         *          the message that was successfully decoded
+         */
+        void onMessageReceived(String message);
+    }
+
     public static final String TAG = "GaltonChat";
     //minimum readable frequency = SAMPLE_RATE/2 = 22050
     public static final int SAMPLE_RATE = 44100;//should work with ~most~ devices
@@ -35,12 +47,14 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     private ChannelAnalyzer channelAnalyzer;
     private DynamicConfiguration dynamicConfiguration;
 
+    private MessageCallback callback;
+
     /**
      * Constructor. Each config should represent and individual non-overlapping channel
      * @param configs
      *          each channel configuration
      */
-    public GaltonChat(List<List<SoniTalkConfig>> configs) {
+    public GaltonChat(List<List<SoniTalkConfig>> configs, MessageCallback callback) {
         //init config variables
 
         //init audio recording variables
@@ -51,6 +65,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         this.audioRecorderBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
         this.audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, audioRecorderBufferSize);
         this.isRecording = false;
+        this.callback = callback;
 
         //decoding variables
         this.decoderList = new ArrayList<>();
@@ -139,8 +154,9 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      */
     @Override
     public void onMessageReceived(SoniTalkMessage receivedMessage, int configIndex, int channelIndex) {
-        Log.e(TAG, receivedMessage.getDecodedMessage() + " config " + configIndex + " channel " + channelIndex);
+        //Log.e(TAG, receivedMessage.getDecodedMessage() + " config " + configIndex + " channel " + channelIndex);
         dynamicConfiguration.onMessageReceived(configIndex);
+        callback.onMessageReceived(receivedMessage.getDecodedMessage());
     }
 
     @Override

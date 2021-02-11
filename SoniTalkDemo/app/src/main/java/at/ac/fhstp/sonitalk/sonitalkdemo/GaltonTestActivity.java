@@ -19,13 +19,14 @@ import at.ac.fhstp.sonitalk.utils.ConfigFactory;
 import at.ac.fhstp.sonitalk.utils.ID;
 import at.ac.fhstp.sonitalk.utils.RSUtils;
 
-public class GaltonTestActivity extends AppCompatActivity {
+public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.MessageCallback {
     private Button startListeningButton;
     private Button sendChannel0Button;
     private Button sendChannel1Button;
     private Button sendChannel2Button;
     private Button sendAlgoButton;
     private TextView lastSentId;
+    private TextView lastReceivedId;
 
     private GaltonChat galton;
 
@@ -40,6 +41,7 @@ public class GaltonTestActivity extends AppCompatActivity {
         sendChannel2Button = findViewById(R.id.channel_2);
         sendAlgoButton = findViewById(R.id.algo_send);
         lastSentId = findViewById(R.id.last_generated_id);
+        lastReceivedId = findViewById(R.id.last_received_id);
 
         //create the api object
         try {
@@ -54,7 +56,7 @@ public class GaltonTestActivity extends AppCompatActivity {
             List<List<SoniTalkConfig>> configs = new ArrayList<>();
             configs.add(config0);
             configs.add(config1);
-            galton = new GaltonChat(configs);
+            galton = new GaltonChat(configs, this);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -101,5 +103,16 @@ public class GaltonTestActivity extends AppCompatActivity {
         String id = ID.generateRandomID();
         lastSentId.setText(id);
         return id;
+    }
+
+    @Override
+    public void onMessageReceived(final String message) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                lastReceivedId.setText(message);
+            }
+        });
+
     }
 }
