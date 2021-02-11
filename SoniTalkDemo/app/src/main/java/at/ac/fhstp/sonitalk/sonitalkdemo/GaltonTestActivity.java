@@ -4,6 +4,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -23,6 +25,7 @@ public class GaltonTestActivity extends AppCompatActivity {
     private Button sendChannel1Button;
     private Button sendChannel2Button;
     private Button sendAlgoButton;
+    private TextView lastSentId;
 
     private GaltonChat galton;
 
@@ -36,6 +39,7 @@ public class GaltonTestActivity extends AppCompatActivity {
         sendChannel1Button = findViewById(R.id.channel_1);
         sendChannel2Button = findViewById(R.id.channel_2);
         sendAlgoButton = findViewById(R.id.algo_send);
+        lastSentId = findViewById(R.id.last_generated_id);
 
         //create the api object
         try {
@@ -94,6 +98,8 @@ public class GaltonTestActivity extends AppCompatActivity {
     }
 
     private String generateNewMessage() {
-        return ID.generateRandomID();
+        String id = ID.generateRandomID();
+        lastSentId.setText(id);
+        return id;
     }
 }

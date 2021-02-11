@@ -120,7 +120,7 @@ public class DynamicConfiguration extends AudioController {
      */
     public void escalateConfig() {
         if (currentConfigIndex != configurations.size() -1) {
-            Log.e(GaltonChat.TAG, "Channel Escalation");
+            Log.e(GaltonChat.TAG, "Configuration Escalation");
             currentConfigIndex++;
             updateDeescalationTimer();
             callback.onConfigurationChange();
@@ -139,7 +139,7 @@ public class DynamicConfiguration extends AudioController {
      */
     public void deescalateConfig() {
         if (currentConfigIndex != 0) {
-            Log.e(GaltonChat.TAG, "Channel Deescalation");
+            Log.e(GaltonChat.TAG, "Configuration Deescalation");
             currentConfigIndex--;
             updateDeescalationTimer();
             callback.onConfigurationChange();

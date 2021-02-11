@@ -35,4 +35,9 @@
         android:layout_height="wrap_content"
         android:text="channel algo send"/>
 
+    <TextView
+        android:id="@+id/last_generated_id"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
 </LinearLayout>
