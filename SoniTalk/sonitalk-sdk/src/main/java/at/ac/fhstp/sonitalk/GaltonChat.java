@@ -3,6 +3,7 @@ package at.ac.fhstp.sonitalk;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.os.Process;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -71,7 +72,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         this.decoderList = new ArrayList<>();
         for (int j = 0; j < configs.size(); j++) {
             for (int i = 0; i < configs.get(j).size(); i++) {
-                SoniTalkDecoder decoder = new SoniTalkDecoder(configs.get(j).get(i), historyBuffer, j, i);
+                SoniTalkDecoder decoder = new SoniTalkDecoder(configs.get(j).get(i), j, i);
                 decoder.addMessageListener(this);
                 this.decoderList.add(decoder);
             }
@@ -81,6 +82,11 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
             @Override
             public void run() {
                 super.run();
+                try {
+                    android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 boolean run = true;//flag for exiting while loop
                 audioRecord.startRecording();
                 short[] temp = new short[audioRecorderBufferSize];
@@ -89,8 +95,8 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
                     //read in the data
                     int bytesRead = audioRecord.read(temp, 0 , audioRecorderBufferSize);
                     if (bytesRead == audioRecorderBufferSize) { //ensure we read enough bytes
+                        convertShortToFloat(temp, current, audioRecorderBufferSize);
                         synchronized (GaltonChat.this.historyBuffer) {
-                            convertShortToFloat(temp, current, audioRecorderBufferSize);
                             historyBuffer.add(current);
                         }
                     }
@@ -176,7 +182,15 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         dynamicConfiguration.startAnalysis();
         channelAnalyzer.startAnalysis();
         for (int i = 0; i < decoderList.size(); i++) {
-            decoderList.get(i).startDecoder();
+            //todo make this not fucking retarded as hell
+            final int temp = i;
+            new Thread() {
+                @Override
+                public void run() {
+                    super.run();
+                    decoderList.get(temp).startDecoding();
+                }
+            }.start();
         }
     }
 

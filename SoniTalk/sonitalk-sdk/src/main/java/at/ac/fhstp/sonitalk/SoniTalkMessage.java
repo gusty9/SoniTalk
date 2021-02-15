@@ -19,6 +19,8 @@
 
 package at.ac.fhstp.sonitalk;
 
+import android.util.Log;
+
 import java.util.Arrays;
 
 import at.ac.fhstp.sonitalk.utils.EncoderUtils;
@@ -58,6 +60,7 @@ public class SoniTalkMessage {
     SoniTalkMessage(String message) {
         message = RSUtils.getEDC(message) + message;
         this.message = EncoderUtils.hexStringToByteArray(message);
+        Log.e(GaltonChat.TAG, "Sending message " + message);
         crcIsCorrect = true;
         decodingTimeNanosecond = 0;
     }

@@ -171,7 +171,7 @@ public class SoniTalkDecoder {
      * @param config
      * @param historyBuffer
      */
-    SoniTalkDecoder(SoniTalkConfig config, CircularArray historyBuffer, int configIndex, int channelIndex) {
+    SoniTalkDecoder(SoniTalkConfig config, int configIndex, int channelIndex) {
         this.Fs = GaltonChat.SAMPLE_RATE;
         this.config = config;
 
@@ -209,7 +209,8 @@ public class SoniTalkDecoder {
         nAnalysisWindowsPerBit =  Math.round((bitperiodInSamples+pauseperiodInSamples)/(float)analysisWinStep); //number of analysis windows of bit+pause
         nAnalysisWindowsPerPause =  Math.round(pauseperiodInSamples/(float)analysisWinStep) ; //number of analysis windows during a pause
         addedLen = analysisWinLen; // Needed for stepping analysis
-        this.historyBuffer = historyBuffer;
+        //this.historyBuffer = historyBuffer;
+        this.historyBuffer = new CircularArray(config.getHistoryBufferSize(GaltonChat.SAMPLE_RATE));
         this.configIndex = configIndex;
         this.channelIndex = channelIndex;
         this.soniTalkContext = null;//we do not care
@@ -219,6 +220,7 @@ public class SoniTalkDecoder {
             @Override
             public void run() {
                 super.run();
+                Log.e(GaltonChat.TAG, "starting decoder thread");
                 boolean run = true;
                 while(run) {
                     analyzeHistoryBuffer();
@@ -322,16 +324,17 @@ public class SoniTalkDecoder {
      * historyBuffer. While the loop is running and it is not stopped it records data.
      * As soon as the historyBuffer is full every, it will be analyzed every loop run.
      */
-    private void startDecoding() {
-        if (! soniTalkContext.checkMicrophonePermission()) {
-            throw new SecurityException("Does not have android.permission.RECORD_AUDIO.");
-        }
-        if ( ! soniTalkContext.checkSelfPermission(requestCode)) {
-            // Make a SoniTalkException out of this ? (currently send a callback to the developer)
-            Log.w(TAG, "SoniTalkDecoder requires a permission from SoniTalkContext.");
-            return;//throw new SecurityException("SoniTalkDecoder requires a permission from SoniTalkContext. Use SoniTalkContext.checkSelfPermission() to make sure that you have the right permission.");
-        }
-        soniTalkContext.showNotificationReceiving();
+    public void startDecoding() {
+        Log.e(GaltonChat.TAG, "StartDecoding!!!");
+//        if (! soniTalkContext.checkMicrophonePermission()) {
+//            throw new SecurityException("Does not have android.permission.RECORD_AUDIO.");
+//        }
+//        if ( ! soniTalkContext.checkSelfPermission(requestCode)) {
+//            // Make a SoniTalkException out of this ? (currently send a callback to the developer)
+//            Log.w(TAG, "SoniTalkDecoder requires a permission from SoniTalkContext.");
+//            return;//throw new SecurityException("SoniTalkDecoder requires a permission from SoniTalkContext. Use SoniTalkContext.checkSelfPermission() to make sure that you have the right permission.");
+//        }
+//        soniTalkContext.showNotificationReceiving();
 
         int readBytes = 0;
         int neededBytes = analysisWinStep;
@@ -370,6 +373,7 @@ public class SoniTalkDecoder {
                         audioRecorder.stop();
                     }
                     audioRecorder.release(); //release the recorder resources
+                    Log.e(GaltonChat.TAG, "error");
                     return;
                 }
             }
@@ -380,6 +384,7 @@ public class SoniTalkDecoder {
                 audioRecorder.stop();
             }
             audioRecorder.release(); //release the recorder resources
+            Log.e(GaltonChat.TAG, "error");
             return;
         }
 
@@ -388,6 +393,7 @@ public class SoniTalkDecoder {
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO);
         } catch (IllegalArgumentException | SecurityException ex) {
             // Ignore
+            Log.e(GaltonChat.TAG, "error");
         }
 
         while (!isLoopStopped()) {
@@ -444,7 +450,6 @@ public class SoniTalkDecoder {
     }
 
     public void startDecoder() {
-        Log.e(TAG, "starting decoder thread");
 
         decoderThread.start();
     }
@@ -540,7 +545,7 @@ public class SoniTalkDecoder {
         float analysisHistoryBuffer[];
         synchronized (historyBuffer) {
             //see if this works?
-            analysisHistoryBuffer = historyBuffer.getLastWindow(config.getHistoryBufferSize(GaltonChat.SAMPLE_RATE));
+            analysisHistoryBuffer = historyBuffer.getArray();
         }
 
         float firstWindow[] = new float[analysisWinLen];
