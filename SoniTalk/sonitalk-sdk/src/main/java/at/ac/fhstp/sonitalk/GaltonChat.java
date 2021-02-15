@@ -62,7 +62,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         this.historyBuffer = new CircularArray(getLargestRequiredBufferSize(configs));
         this.dynamicConfiguration = new DynamicConfiguration(historyBuffer, configs);
         this.channelAnalyzer = new ChannelAnalyzer(dynamicConfiguration, historyBuffer);
-        dynamicConfiguration.addConfigChangeListener(channelAnalyzer);
+
         this.audioRecorderBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
         this.audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, audioRecorderBufferSize);
         this.isRecording = false;
@@ -161,7 +161,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     @Override
     public void onMessageReceived(SoniTalkMessage receivedMessage, int configIndex, int channelIndex) {
         //Log.e(TAG, receivedMessage.getDecodedMessage() + " config " + configIndex + " channel " + channelIndex);
-        dynamicConfiguration.onMessageReceived(configIndex);
+        //dynamicConfiguration.onMessageReceived(configIndex);
         callback.onMessageReceived(receivedMessage.getDecodedMessage());
     }
 
@@ -179,7 +179,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     public void startListeningThread() {
         isRecording = true;
         recordingThread.start();
-        dynamicConfiguration.startAnalysis();
+        //dynamicConfiguration.startAnalysis();
         channelAnalyzer.startAnalysis();
         for (int i = 0; i < decoderList.size(); i++) {
             //todo make this not fucking retarded as hell

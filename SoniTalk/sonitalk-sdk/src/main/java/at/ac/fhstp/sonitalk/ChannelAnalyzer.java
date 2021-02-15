@@ -21,13 +21,12 @@ import uk.me.berndporr.iirj.Butterworth;
  * and determining which channels are available
  * @author Erik Gustafson
  */
-public class ChannelAnalyzer extends AudioController implements DynamicConfiguration.ConfigurationChangeListener {
+public class ChannelAnalyzer extends AudioController {
     private final int bandpassFilterOrder = 8;//todo figure out what this does
     private final int messageHeaderFactor = 4;//todo test this a little bit more
 
-    private boolean[] channelsAvailable;
-    private final Object mutex;
-    private int messageDuration;//milliseconds
+    private List<boolean[]> channelsAvailable;
+    private final Object mutex = new Object();
     private Handler delayedTaskHandler;
     private DynamicConfiguration dynamicConfiguration;
 
@@ -40,11 +39,14 @@ public class ChannelAnalyzer extends AudioController implements DynamicConfigura
     public ChannelAnalyzer(DynamicConfiguration dynamicConfiguration, CircularArray historyBuffer) {
         super(historyBuffer, dynamicConfiguration.getAnalysisWindowLength());
         this.dynamicConfiguration = dynamicConfiguration;
-        this.channelsAvailable = new boolean[dynamicConfiguration.sizeCurrentConfig()];
-        Arrays.fill(this.channelsAvailable, true);// all channels are set to available at first
-        mutex = new Object();
+        this.channelsAvailable = new ArrayList<>();
+        for (int i = 0; i < this.dynamicConfiguration.getNumberOfConfigs(); i++) {
+            boolean[] available = new boolean[this.dynamicConfiguration.getConfigSize(i)];
+            Arrays.fill(available, true);
+            this.channelsAvailable.add(available);
+        }
         this.delayedTaskHandler = new Handler();
-        this.messageDuration = dynamicConfiguration.getCurrentMessageLength();
+
     }
 
     /**
@@ -55,63 +57,68 @@ public class ChannelAnalyzer extends AudioController implements DynamicConfigura
      */
     @Override
     void analyzeSamples(float[] analysisHistoryBuffer) {
-        List<SoniTalkConfig> configList = dynamicConfiguration.getCurrentConfiguration();
-        for (int i = 0; i < configList.size(); i++) {
-            boolean available;
-            synchronized (mutex) {
-                //todo figure out race condition that can cause this to out of bounds
-                available =  channelsAvailable[i];
-            }
-            //don't run the analysis if the channel is occupied.
-            if (available) {
-                int analysisWindowLength = getAnalysisWindowLength(configList.get(i));
-                //copy the samples from the buffer that were added most recently
-                float[] responseUpper = new float[analysisWindowLength];
-                float[] responseLower = new float[analysisWindowLength];
-                System.arraycopy(analysisHistoryBuffer, 0, responseUpper, 0, analysisWindowLength);
-                System.arraycopy(analysisHistoryBuffer, 0, responseLower, 0, analysisWindowLength);
 
-                //create the filtered arrays
-                double[] responseUpperDouble = new double[analysisWindowLength * 2];
-                double[] responseLowerDouble = new double[analysisWindowLength * 2];
-                int bandpassWidth = DecoderUtils.getBandpassWidth(configList.get(i).getnFrequencies(), configList.get(i).getFrequencySpace());
-                int centerFrequencyLower = configList.get(i).getFrequencyZero() + (bandpassWidth/2);
-                int centerFrequencyUpper = configList.get(i).getFrequencyZero() + bandpassWidth + (bandpassWidth/2);
-
-                //filter the arrays
-                //only filter 1/2 the bandpass width in order to decrease overlap
-                Butterworth butterworthUpper = new Butterworth();
-                butterworthUpper.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyUpper, bandpassWidth/2);
-                Butterworth butterworthLower = new Butterworth();
-                butterworthLower.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyLower, bandpassWidth/2);
-
-                for (int k = 0; k < responseLower.length; k++) {
-                    responseUpperDouble[k] = butterworthUpper.filter(responseUpper[k]);
-                    responseLowerDouble[k] = butterworthLower.filter(responseLower[k]);
+        for (int i = 0; i < channelsAvailable.size(); i++) {
+            for (int j = 0; j < channelsAvailable.get(i).length; j++) {
+                boolean available = false;
+                synchronized (mutex) {
+                    available = channelsAvailable.get(i)[j];
+                   // Log.e(GaltonChat.TAG, "config " + i + " channel " + j + " " + available);
                 }
-                DoubleFFT_1D fft = new DoubleFFT_1D(responseUpper.length);
-                fft.complexForward(responseUpperDouble);
-                fft.complexForward(responseLowerDouble);
+                //don't run the analysis if the channel is occupied.
+                if (available) {
+                    SoniTalkConfig config = dynamicConfiguration.getConfigurations().get(i).get(j);
+                    int analysisWindowLength = getAnalysisWindowLength(config);
+                    //copy the samples from the buffer that were added most recently
+                    float[] responseUpper = new float[analysisWindowLength];
+                    float[] responseLower = new float[analysisWindowLength];
+                    System.arraycopy(analysisHistoryBuffer, 0, responseUpper, 0, analysisWindowLength);
+                    System.arraycopy(analysisHistoryBuffer, 0, responseLower, 0, analysisWindowLength);
 
-                double sumAbsResponseUpper = 0.0;
-                double sumAbsResponseLower = 0.0;
+                    //create the filtered arrays
+                    double[] responseUpperDouble = new double[analysisWindowLength * 2];
+                    double[] responseLowerDouble = new double[analysisWindowLength * 2];
+                    int bandpassWidth = DecoderUtils.getBandpassWidth(config.getnFrequencies(), config.getFrequencySpace());
+                    int centerFrequencyLower = config.getFrequencyZero() + (bandpassWidth/2);
+                    int centerFrequencyUpper = config.getFrequencyZero() + bandpassWidth + (bandpassWidth/2);
 
-                for (int k = 0; k < responseUpperDouble.length; k+=2) {
-                    sumAbsResponseUpper += DecoderUtils.getComplexAbsolute(responseUpperDouble[k], responseUpperDouble[k+1]);
-                    sumAbsResponseLower += DecoderUtils.getComplexAbsolute(responseLowerDouble[k], responseLowerDouble[k+1]);
-                }
+                    //filter the arrays
+                    //only filter 1/2 the bandpass width in order to decrease overlap
+                    Butterworth butterworthUpper = new Butterworth();
+                    butterworthUpper.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyUpper, bandpassWidth/2);
+                    Butterworth butterworthLower = new Butterworth();
+                    butterworthLower.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyLower, bandpassWidth/2);
 
-                if (sumAbsResponseUpper > messageHeaderFactor * sumAbsResponseLower) {
-                    //if this is true, a message block was found in the most recently added samples to the buffer
-                    //set this channel to occupied and set a timer to reset the channel
-                    synchronized (mutex) {
-                        channelsAvailable[i] = false;
-                        Log.e(GaltonChat.TAG, "channel " + i + " lower: " + sumAbsResponseLower + " upper: " + sumAbsResponseUpper);
+                    for (int k = 0; k < responseLower.length; k++) {
+                        responseUpperDouble[k] = butterworthUpper.filter(responseUpper[k]);
+                        responseLowerDouble[k] = butterworthLower.filter(responseLower[k]);
                     }
-                    ChannelAvailableRunnable waitMessageDuration = new ChannelAvailableRunnable(channelsAvailable, i);
-                    delayedTaskHandler.postDelayed(waitMessageDuration, messageDuration);
+                    DoubleFFT_1D fft = new DoubleFFT_1D(responseUpper.length);
+                    fft.complexForward(responseUpperDouble);
+                    fft.complexForward(responseLowerDouble);
+
+                    double sumAbsResponseUpper = 0.0;
+                    double sumAbsResponseLower = 0.0;
+
+                    for (int k = 0; k < responseUpperDouble.length; k+=2) {
+                        sumAbsResponseUpper += DecoderUtils.getComplexAbsolute(responseUpperDouble[k], responseUpperDouble[k+1]);
+                        sumAbsResponseLower += DecoderUtils.getComplexAbsolute(responseLowerDouble[k], responseLowerDouble[k+1]);
+                    }
+
+                    if (sumAbsResponseUpper > messageHeaderFactor * sumAbsResponseLower) {
+                        //if this is true, a message block was found in the most recently added samples to the buffer
+                        //set this channel to occupied and set a timer to reset the channel
+                        synchronized (mutex) {
+                            channelsAvailable.get(i)[j] = false;
+                            Log.e(GaltonChat.TAG, "config " + i + " channel " + j + " lower: " + sumAbsResponseLower + " upper: " + sumAbsResponseUpper);
+                        }
+                        ChannelAvailableRunnable waitMessageDuration = new ChannelAvailableRunnable(channelsAvailable.get(i), j);
+                        delayedTaskHandler.postDelayed(waitMessageDuration, dynamicConfiguration.getMessageLength(i));
+                    }
                 }
             }
+
+
         }
     }
 
@@ -122,9 +129,11 @@ public class ChannelAnalyzer extends AudioController implements DynamicConfigura
      */
     public int getSendingChannel() {
         List<Integer> channelAvailableIndices = new ArrayList<>();
-        boolean[] channelsAvailableCpy = new boolean[channelsAvailable.length];
-        synchronized (mutex) {
-            System.arraycopy(channelsAvailable, 0, channelsAvailableCpy, 0, channelsAvailable.length);
+        int currentConfig = dynamicConfiguration.getCurrentConfigIndex();
+
+        boolean[] channelsAvailableCpy = new boolean[channelsAvailable.get(currentConfig).length];
+        synchronized (channelsAvailable.get(currentConfig)) {
+            System.arraycopy(channelsAvailable, 0, channelsAvailableCpy, 0, channelsAvailable.get(currentConfig).length);
         }
         for (int i = 0; i < channelsAvailableCpy.length; i++) {
             if (channelsAvailableCpy[i]) {
@@ -144,16 +153,6 @@ public class ChannelAnalyzer extends AudioController implements DynamicConfigura
         //return a random index of available channels
         return getRandomItemFromList(channelAvailableIndices);
     }
-
-    @Override
-    public void onConfigurationChange() {
-        synchronized (mutex) {
-            this.channelsAvailable = new boolean[dynamicConfiguration.sizeCurrentConfig()];
-            Arrays.fill(channelsAvailable, true);
-        }
-        this.messageDuration = dynamicConfiguration.getCurrentMessageLength();
-    }
-
 
     /**
      * private inner class used to set a channel back to available after

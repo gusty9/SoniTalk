@@ -28,7 +28,6 @@ public class DynamicConfiguration extends AudioController {
     private int deescalationTimer;
     private long lastBothOccupiedTime;
 
-    private ConfigurationChangeListener callback;
 
     public interface ConfigurationChangeListener {
         public void onConfigurationChange();
@@ -113,6 +112,10 @@ public class DynamicConfiguration extends AudioController {
         return configurations.get(currentConfigIndex);
     }
 
+    public int getCurrentConfigIndex() {
+        return currentConfigIndex;
+    }
+
     /**
      * escalate the current configuration to the next highest
      * in the configuration list
@@ -123,7 +126,6 @@ public class DynamicConfiguration extends AudioController {
             Log.e(GaltonChat.TAG, "Configuration Escalation");
             currentConfigIndex++;
             updateDeescalationTimer();
-            callback.onConfigurationChange();
         }
     }
 
@@ -142,7 +144,6 @@ public class DynamicConfiguration extends AudioController {
             Log.e(GaltonChat.TAG, "Configuration Deescalation");
             currentConfigIndex--;
             updateDeescalationTimer();
-            callback.onConfigurationChange();
         }
     }
 
@@ -202,17 +203,25 @@ public class DynamicConfiguration extends AudioController {
         return getAnalysisWindowLength(configurations.get(currentConfigIndex).get(0));
     }
 
-    public int sizeCurrentConfig() {
-        return configurations.get(currentConfigIndex).size();
+    public int getConfigSize(int config) {
+        return configurations.get(config).size();
+    }
+
+    public int getNumberOfConfigs() {
+        return configurations.size();
     }
 
     public int getCurrentMessageLength() {
         return configurations.get(currentConfigIndex).get(0).getMessageDurationMS();
     }
 
-    public void addConfigChangeListener(ConfigurationChangeListener listener) {
-        this.callback = listener;
+    public int getMessageLength(int configIndex) {
+        return configurations.get(configIndex).get(0).getMessageDurationMS();
     }
+
+//    public void addConfigChangeListener(ConfigurationChangeListener listener) {
+//        this.callback = listener;
+//    }
 
     /**
      * Set flags back to true after a certain timer timeout
