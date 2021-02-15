@@ -110,7 +110,6 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Log.e(GaltonChat.TAG, "successfully decoded " + message);
                 lastReceivedId.setText(message);
             }
         });

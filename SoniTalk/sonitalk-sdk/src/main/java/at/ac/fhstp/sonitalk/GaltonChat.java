@@ -160,8 +160,8 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      */
     @Override
     public void onMessageReceived(SoniTalkMessage receivedMessage, int configIndex, int channelIndex) {
-        //Log.e(TAG, receivedMessage.getDecodedMessage() + " config " + configIndex + " channel " + channelIndex);
-        //dynamicConfiguration.onMessageReceived(configIndex);
+        Log.e(TAG, receivedMessage.getDecodedMessage() + " config " + configIndex + " channel " + channelIndex);
+        dynamicConfiguration.onMessageReceived(configIndex);
         callback.onMessageReceived(receivedMessage.getDecodedMessage());
     }
 

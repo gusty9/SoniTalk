@@ -125,14 +125,8 @@ public class DynamicConfiguration extends AudioController {
         if (currentConfigIndex != configurations.size() -1) {
             Log.e(GaltonChat.TAG, "Configuration Escalation");
             currentConfigIndex++;
-            updateDeescalationTimer();
         }
     }
-
-    public List<List<SoniTalkConfig>> getConfigurations() {
-        return this.configurations;
-    }
-
 
     /**
      * deescalate the current configuration to the previous one
@@ -143,8 +137,19 @@ public class DynamicConfiguration extends AudioController {
         if (currentConfigIndex != 0) {
             Log.e(GaltonChat.TAG, "Configuration Deescalation");
             currentConfigIndex--;
-            updateDeescalationTimer();
         }
+    }
+
+    public void setConfigurationIndex(int index) {
+        if (index != currentConfigIndex) {
+            currentConfigIndex = index;
+            Log.e(GaltonChat.TAG, "setting configuration to index " + index);
+        }
+    }
+
+
+    public List<List<SoniTalkConfig>> getConfigurations() {
+        return this.configurations;
     }
 
     /**
@@ -170,34 +175,9 @@ public class DynamicConfiguration extends AudioController {
     }
 
     public void onMessageReceived(int configIndex) {
-        if (configIndex > currentConfigIndex) {
-            escalateConfig();
-        } else if (configIndex < currentConfigIndex) {
-            deescalateConfig();
-        }
+        setConfigurationIndex(configIndex);
     }
 
-    /**
-     * update the deescalation timer to match the current configuration
-     */
-    private void updateDeescalationTimer() {
-        deescalationTimer = configurations.get(currentConfigIndex).get(0).getMessageDurationMS();
-    }
-
-    private void deescalationCheck() {
-        boolean bothOccupied = true;
-        synchronized (availability.get(currentConfigIndex)) {
-            for (int i = 0; i < availability.get(currentConfigIndex).length; i++) {
-                bothOccupied = bothOccupied && !availability.get(currentConfigIndex)[i];
-            }
-        }
-        if (bothOccupied) {
-            lastBothOccupiedTime = System.currentTimeMillis();
-        }
-        if ((lastBothOccupiedTime != -1) && System.currentTimeMillis() - lastBothOccupiedTime > deescalationTimer) {
-            deescalateConfig();
-        }
-    }
 
     public int getAnalysisWindowLength() {
         return getAnalysisWindowLength(configurations.get(currentConfigIndex).get(0));

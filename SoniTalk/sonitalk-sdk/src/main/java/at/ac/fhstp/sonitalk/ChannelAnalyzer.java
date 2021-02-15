@@ -110,7 +110,7 @@ public class ChannelAnalyzer extends AudioController {
                         //set this channel to occupied and set a timer to reset the channel
                         synchronized (mutex) {
                             channelsAvailable.get(i)[j] = false;
-                            Log.e(GaltonChat.TAG, "config " + i + " channel " + j + " lower: " + sumAbsResponseLower + " upper: " + sumAbsResponseUpper);
+                            //Log.e(GaltonChat.TAG, "config " + i + " channel " + j + " lower: " + sumAbsResponseLower + " upper: " + sumAbsResponseUpper);
                         }
                         ChannelAvailableRunnable waitMessageDuration = new ChannelAvailableRunnable(channelsAvailable.get(i), j);
                         delayedTaskHandler.postDelayed(waitMessageDuration, dynamicConfiguration.getMessageLength(i));
@@ -179,7 +179,7 @@ public class ChannelAnalyzer extends AudioController {
             synchronized (mutex) {
                 //ensure concurrency
                 channels[channelIndex] = true;
-                Log.e(GaltonChat.TAG, "channel " + channelIndex + " available");
+                //Log.e(GaltonChat.TAG, "channel " + channelIndex + " available");
             }
         }
     }
