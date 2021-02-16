@@ -55,7 +55,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      * @param configs
      *          each channel configuration
      */
-    public GaltonChat(List<List<SoniTalkConfig>> configs, MessageCallback callback, DynamicConfiguration.ConfigurationChangeListener configurationChangeListener) {
+    public GaltonChat(List<List<SoniTalkConfig>> configs, MessageCallback callback, DynamicConfiguration.ConfigurationChangeListener configurationChangeListener, ChannelAnalyzer.ChannelListener channelListener) {
         //init config variables
 
         //init audio recording variables
@@ -63,6 +63,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         this.dynamicConfiguration = new DynamicConfiguration(historyBuffer, configs);
         dynamicConfiguration.passCallback(configurationChangeListener);
         this.channelAnalyzer = new ChannelAnalyzer(dynamicConfiguration, historyBuffer);
+        channelAnalyzer.passCallback(channelListener);
 
         this.audioRecorderBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
         this.audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, audioRecorderBufferSize);

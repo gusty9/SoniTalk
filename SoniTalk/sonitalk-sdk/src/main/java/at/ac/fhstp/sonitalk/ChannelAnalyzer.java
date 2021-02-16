@@ -5,6 +5,7 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
@@ -29,6 +30,12 @@ public class ChannelAnalyzer extends AudioController {
     private final Object mutex = new Object();
     private Handler delayedTaskHandler;
     private DynamicConfiguration dynamicConfiguration;
+
+    private ChannelListener callback;
+
+    public interface ChannelListener {
+        void channelsUpdated(List<boolean[]> channels);
+    }
 
     /**
      * @param dynamicConfiguration
@@ -108,11 +115,14 @@ public class ChannelAnalyzer extends AudioController {
                     if (sumAbsResponseUpper > messageHeaderFactor * sumAbsResponseLower) {
                         //if this is true, a message block was found in the most recently added samples to the buffer
                         //set this channel to occupied and set a timer to reset the channel
+                        List<boolean[]> cpy;
                         synchronized (mutex) {
                             channelsAvailable.get(i)[j] = false;
+                            cpy = new ArrayList<>(channelsAvailable);
                             //Log.e(GaltonChat.TAG, "config " + i + " channel " + j + " lower: " + sumAbsResponseLower + " upper: " + sumAbsResponseUpper);
                         }
-                        ChannelAvailableRunnable waitMessageDuration = new ChannelAvailableRunnable(channelsAvailable.get(i), j);
+                        callback.channelsUpdated(cpy);
+                        ChannelAvailableRunnable waitMessageDuration = new ChannelAvailableRunnable(channelsAvailable, i, j);
                         delayedTaskHandler.postDelayed(waitMessageDuration, dynamicConfiguration.getMessageLength(i));
                     }
                 }
@@ -120,6 +130,10 @@ public class ChannelAnalyzer extends AudioController {
 
 
         }
+    }
+
+    public void passCallback(ChannelListener callback) {
+        this.callback = callback;
     }
 
     /**
@@ -159,7 +173,8 @@ public class ChannelAnalyzer extends AudioController {
      * a duration equal to the duration of a single message
      */
     private class ChannelAvailableRunnable implements Runnable {
-        private final boolean[] channels;
+        private List<boolean[]> channels;
+        private final int config;
         private final int channelIndex;
 
         /**
@@ -168,19 +183,23 @@ public class ChannelAnalyzer extends AudioController {
          * @param channelIndex
          *          index of channel to be set to available after a timeout
          */
-        public ChannelAvailableRunnable(boolean[] channels, int channelIndex) {
+        public ChannelAvailableRunnable(List<boolean[]> channels,int config, int channelIndex) {
             this.channels = channels;
+            this.config = config;
             this.channelIndex = channelIndex;
         }
 
         @Override
         public void run() {
             //set the channel to available when this is ran
+            List<boolean[]> cpy;
             synchronized (mutex) {
                 //ensure concurrency
-                channels[channelIndex] = true;
+                channels.get(config)[channelIndex] = true;
+                cpy = new ArrayList<>(channels);
                 //Log.e(GaltonChat.TAG, "channel " + channelIndex + " available");
             }
+            callback.channelsUpdated(cpy);
         }
     }
 

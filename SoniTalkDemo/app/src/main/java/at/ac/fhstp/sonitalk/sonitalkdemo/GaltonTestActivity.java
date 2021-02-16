@@ -14,13 +14,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import java.util.ArrayList;
 import java.util.List;
 
+import at.ac.fhstp.sonitalk.ChannelAnalyzer;
 import at.ac.fhstp.sonitalk.DynamicConfiguration;
 import at.ac.fhstp.sonitalk.GaltonChat;
 import at.ac.fhstp.sonitalk.SoniTalkConfig;
 import at.ac.fhstp.sonitalk.utils.ConfigFactory;
 import at.ac.fhstp.sonitalk.utils.ID;
 
-public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.MessageCallback, DynamicConfiguration.ConfigurationChangeListener {
+public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.MessageCallback, DynamicConfiguration.ConfigurationChangeListener, ChannelAnalyzer.ChannelListener {
     private Button startListeningButton;
     private Button sendConfig0Channel0;
     private Button sendConfig1Channel0;
@@ -91,7 +92,7 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
             configs.add(0, config0);
             configs.add(1, config1);
             configs.add(2, config2);
-            galton = new GaltonChat(configs, this, this);
+            galton = new GaltonChat(configs, this, this, this);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -190,6 +191,33 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
                         config2.setTextColor(Color.GREEN);
                         break;
                 }
+            }
+        });
+    }
+
+    @Override
+    public void channelsUpdated(List<boolean[]> channels) {
+        final int[] colors = new int[6];//hard coded for this tester activity
+        int helper = 0;
+        for (int i = 0; i < channels.size(); i++) {
+            for (int j = 0; j < channels.get(i).length; j++) {
+                if (channels.get(i)[j]) {
+                    colors[helper] = Color.GREEN;
+                } else {
+                    colors[helper] = Color.RED;
+                }
+                helper++;
+            }
+        }
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                config0Chan0.setTextColor(colors[0]);
+                config1Chan0.setTextColor(colors[1]);
+                config1Chan1.setTextColor(colors[2]);
+                config2Chan0.setTextColor(colors[3]);
+                config2Chan2.setTextColor(colors[4]);
+                config2Chan2.setTextColor(colors[5]);
             }
         });
     }
