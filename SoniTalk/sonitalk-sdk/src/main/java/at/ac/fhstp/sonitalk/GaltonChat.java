@@ -59,7 +59,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         //init config variables
 
         //init audio recording variables
-        this.historyBuffer = new CircularArray(getLargestRequiredBufferSize(configs));
+        this.historyBuffer = new CircularArray(getLargestRequiredBufferSize(configs));/*perhaps make this smaller, as each decoder now has its own buffer?*/
         this.dynamicConfiguration = new DynamicConfiguration(historyBuffer, configs);
         this.channelAnalyzer = new ChannelAnalyzer(dynamicConfiguration, historyBuffer);
 
@@ -208,22 +208,41 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     }
 
     //method used for testing
-    public void sendChannel0(String message) {
+    public void send_config0_channel0(String message) {
         SoniTalkSender sender = new SoniTalkSender(null);
         sender.send(encodeMessage(message, 0, 0), SONITALK_SENDER_REQUEST_CODE);
     }
 
     //method used for testing
-    public void sendChannel1(String message) {
+    public void send_config1_channel0(String message) {
         SoniTalkSender sender = new SoniTalkSender(null);
         sender.send(encodeMessage(message, 1,0), SONITALK_SENDER_REQUEST_CODE);
     }
 
     //method used for testing
-    public void sendChannel2(String message) {
+    public void send_config1_channel1(String message) {
         SoniTalkSender sender = new SoniTalkSender(null);
         sender.send(encodeMessage(message, 1,1), SONITALK_SENDER_REQUEST_CODE);
     }
+
+    //method used for testing
+    public void send_config2_channel0(String message) {
+        SoniTalkSender sender = new SoniTalkSender(null);
+        sender.send(encodeMessage(message, 2,0), SONITALK_SENDER_REQUEST_CODE);
+    }
+
+    //method used for testing
+    public void send_config2_channel1(String message) {
+        SoniTalkSender sender = new SoniTalkSender(null);
+        sender.send(encodeMessage(message, 2,1), SONITALK_SENDER_REQUEST_CODE);
+    }
+
+    //method used for testing
+    public void send_config2_channel2(String message) {
+        SoniTalkSender sender = new SoniTalkSender(null);
+        sender.send(encodeMessage(message, 2,2), SONITALK_SENDER_REQUEST_CODE);
+    }
+
 
     /**
      * calculate the size of the history buffer needed to fit

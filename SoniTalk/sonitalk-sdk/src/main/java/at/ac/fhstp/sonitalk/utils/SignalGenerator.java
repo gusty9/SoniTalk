@@ -251,36 +251,36 @@ public class SignalGenerator {
 
         System.arraycopy(inputSignal, 0, complexSignal, 0, winLenSamples); //copy the array with the random numbers into the new one
 
-        mFFT.realForwardFull(complexSignal); //make the fft on the complex signal
+        if (cutoffFreqUpIdx.length > 0) {
+            mFFT.realForwardFull(complexSignal); //make the fft on the complex signal
+            double minFreq = cutoffFreqDownIdx[0]; //get the lowest frequency after the sort
+            double maxFreq = cutoffFreqUpIdx[whiteNoiseBands.length-1]; //get the highest frequency after the sort
 
-        double minFreq = cutoffFreqDownIdx[0]; //get the lowest frequency after the sort
-        double maxFreq = cutoffFreqUpIdx[whiteNoiseBands.length-1]; //get the highest frequency after the sort
+            for (double j = 0; j < minFreq; j++) {
+                complexSignal[(int)j] = 0.0f; //set all values up to the lowest frequency to 0
+            }
 
-        for (double j = 0; j < minFreq; j++) {
-            complexSignal[(int)j] = 0.0f; //set all values up to the lowest frequency to 0
-        }
+            double helpWinLenSamples = winLenSamples * 2;
+            for (double j = (helpWinLenSamples - (minFreq-1)); j < helpWinLenSamples; j++) {
+                complexSignal[(int)j] = 0.0f; //set all values up to the lowest frequency to 0 mirrored to the doubled winLenSamples size
+            }
 
-        double helpWinLenSamples = winLenSamples * 2;
-        for (double j = (helpWinLenSamples - (minFreq-1)); j < helpWinLenSamples; j++) {
-            complexSignal[(int)j] = 0.0f; //set all values up to the lowest frequency to 0 mirrored to the doubled winLenSamples size
-        }
+            double helpUpSamples = winLenSamples - (maxFreq+1);
+            for (double j = winLenSamples - helpUpSamples; j < winLenSamples + helpUpSamples; j++) {
+                complexSignal[(int)j] = 0.0f; //set all frequencies from the highest frequency up to the mirrored frequency of the doubled winLenSamples size
+            }
 
-        double helpUpSamples = winLenSamples - (maxFreq+1);
-        for (double j = winLenSamples - helpUpSamples; j < winLenSamples + helpUpSamples; j++) {
-            complexSignal[(int)j] = 0.0f; //set all frequencies from the highest frequency up to the mirrored frequency of the doubled winLenSamples size
-        }
-
-        if(whiteNoiseBands.length>1) {
-            for (int k = 0; k < whiteNoiseBands.length-1; k++) {
-                for (double l = cutoffFreqUpIdx[k]+1; l < cutoffFreqDownIdx[k+1]; l++) {
-                    complexSignal[(int)l] = 0.0f; //set all frequencies between the higher frequency of one band to the lower frequency of the next band to 0
-                }
-                int helpSamples = winLenSamples * 2;
-                for (double l = helpSamples-cutoffFreqDownIdx[k+1]+1; l < helpSamples-cutoffFreqUpIdx[k]; l++) {
-                    complexSignal[(int)l] = 0.0f; //set all frequencies between the higher frequency of one band to the lower frequency of the next band to 0 mirrored to the doubled winLenSamples size
+            if(whiteNoiseBands.length>1) {
+                for (int k = 0; k < whiteNoiseBands.length-1; k++) {
+                    for (double l = cutoffFreqUpIdx[k]+1; l < cutoffFreqDownIdx[k+1]; l++) {
+                        complexSignal[(int)l] = 0.0f; //set all frequencies between the higher frequency of one band to the lower frequency of the next band to 0
+                    }
+                    int helpSamples = winLenSamples * 2;
+                    for (double l = helpSamples-cutoffFreqDownIdx[k+1]+1; l < helpSamples-cutoffFreqUpIdx[k]; l++) {
+                        complexSignal[(int)l] = 0.0f; //set all frequencies between the higher frequency of one band to the lower frequency of the next band to 0 mirrored to the doubled winLenSamples size
+                    }
                 }
             }
-		}
 
             for (int k = 0; k < whiteNoiseBands.length; k++) {
                 for (double l = cutoffFreqDownIdx[k]; l <= cutoffFreqUpIdx[k]; l++) {
@@ -292,9 +292,8 @@ public class SignalGenerator {
                     complexSignal[(int)l] = 1000;
                 }
             }
-        
-
-        mFFT.complexInverse(complexSignal,false);
+            mFFT.complexInverse(complexSignal,false);
+        }
 
         return complexSignal; //return the signal with the complex values
 
