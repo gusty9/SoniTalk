@@ -251,6 +251,7 @@ public class SignalGenerator {
 
         System.arraycopy(inputSignal, 0, complexSignal, 0, winLenSamples); //copy the array with the random numbers into the new one
 
+        //check that there are enough samples to do the fft, if there aren't this signal block should be empty noise. Do nothing
         if (cutoffFreqUpIdx.length > 0) {
             mFFT.realForwardFull(complexSignal); //make the fft on the complex signal
             double minFreq = cutoffFreqDownIdx[0]; //get the lowest frequency after the sort
