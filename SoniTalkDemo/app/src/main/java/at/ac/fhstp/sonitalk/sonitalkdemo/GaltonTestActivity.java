@@ -83,42 +83,42 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
         sendConfig0Channel0.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                galton.send_config0_channel0(generateNewMessage());
+                galton.force_config_and_channel_send(generateNewMessage(), 0, 0);
             }
         });
 
         sendConfig1Channel0.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                galton.send_config1_channel0(generateNewMessage());
+                galton.force_config_and_channel_send(generateNewMessage(), 1, 0);
             }
         });
 
         sendConfig1Channel1.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                galton.send_config1_channel1(generateNewMessage());
+                galton.force_config_and_channel_send(generateNewMessage(), 1, 1);
             }
         });
 
         sendConfig2Channel0.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                galton.send_config2_channel0(generateNewMessage());
+                galton.force_config_and_channel_send(generateNewMessage(), 2, 0);
             }
         });
 
         sendConfig2Channel1.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                galton.send_config2_channel1(generateNewMessage());
+                galton.force_config_and_channel_send(generateNewMessage(), 2, 1);
             }
         });
 
         sendConfig2Channel2.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                galton.send_config2_channel2(generateNewMessage());
+                galton.force_config_and_channel_send(generateNewMessage(), 2, 2);
             }
         });
 

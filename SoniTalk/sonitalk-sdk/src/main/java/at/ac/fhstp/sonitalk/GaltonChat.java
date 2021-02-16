@@ -207,40 +207,10 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         recordingThread.interrupt();//tell the thread to stop
     }
 
-    //method used for testing
-    public void send_config0_channel0(String message) {
+    //method used for testing - force a send on what I want to see if the system is working appropriately
+    public void force_config_and_channel_send(String message, int config, int channel) {
         SoniTalkSender sender = new SoniTalkSender(null);
-        sender.send(encodeMessage(message, 0, 0), SONITALK_SENDER_REQUEST_CODE);
-    }
-
-    //method used for testing
-    public void send_config1_channel0(String message) {
-        SoniTalkSender sender = new SoniTalkSender(null);
-        sender.send(encodeMessage(message, 1,0), SONITALK_SENDER_REQUEST_CODE);
-    }
-
-    //method used for testing
-    public void send_config1_channel1(String message) {
-        SoniTalkSender sender = new SoniTalkSender(null);
-        sender.send(encodeMessage(message, 1,1), SONITALK_SENDER_REQUEST_CODE);
-    }
-
-    //method used for testing
-    public void send_config2_channel0(String message) {
-        SoniTalkSender sender = new SoniTalkSender(null);
-        sender.send(encodeMessage(message, 2,0), SONITALK_SENDER_REQUEST_CODE);
-    }
-
-    //method used for testing
-    public void send_config2_channel1(String message) {
-        SoniTalkSender sender = new SoniTalkSender(null);
-        sender.send(encodeMessage(message, 2,1), SONITALK_SENDER_REQUEST_CODE);
-    }
-
-    //method used for testing
-    public void send_config2_channel2(String message) {
-        SoniTalkSender sender = new SoniTalkSender(null);
-        sender.send(encodeMessage(message, 2,2), SONITALK_SENDER_REQUEST_CODE);
+        sender.send(encodeMessage(message, config, channel), SONITALK_SENDER_REQUEST_CODE);
     }
 
 
