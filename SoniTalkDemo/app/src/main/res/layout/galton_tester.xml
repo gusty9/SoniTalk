@@ -51,7 +51,7 @@
         android:id="@+id/algo_send"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="channel algo send"/>
+        android:text="send with selection algorithm"/>
 
     <TextView
         android:layout_width="wrap_content"
@@ -74,5 +74,101 @@
         android:text="XXXX"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:textColor="#FF00FF00"
+            android:id="@+id/config0Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Configuration0"
+            android:padding="4dp"/>
+
+        <TextView
+            android:textColor="#FF00FF00"
+            android:id="@+id/config0chan0Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="channel0"
+            android:padding="4dp"/>
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:textColor="#FFFF0000"
+            android:id="@+id/config1Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Configuration1"
+            android:padding="4dp"/>
+
+        <TextView
+            android:textColor="#FF00FF00"
+            android:id="@+id/config1chan0Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="channel0"
+            android:padding="4dp"/>
+
+        <TextView
+            android:textColor="#FF00FF00"
+            android:id="@+id/config1chan1Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="channel1"
+            android:padding="4dp"/>
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:textColor="#FFFF0000"
+            android:id="@+id/config2Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Configuration2"
+            android:padding="4dp"/>
+
+        <TextView
+            android:textColor="#FF00FF00"
+            android:id="@+id/config2chan0Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="channel0"
+            android:padding="4dp"/>
+
+        <TextView
+            android:textColor="#FF00FF00"
+            android:id="@+id/config2chan1Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="channel1"
+            android:padding="4dp"/>
+
+        <TextView
+            android:textColor="#FF00FF00"
+            android:id="@+id/config2chan2Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="channel2"
+            android:padding="4dp"/>
+
+
+    </LinearLayout>
 
 </LinearLayout>

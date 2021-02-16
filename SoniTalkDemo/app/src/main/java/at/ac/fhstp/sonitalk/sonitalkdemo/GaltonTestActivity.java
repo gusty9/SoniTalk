@@ -1,22 +1,26 @@
 package at.ac.fhstp.sonitalk.sonitalkdemo;
 
+import android.content.res.Configuration;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import at.ac.fhstp.sonitalk.DynamicConfiguration;
 import at.ac.fhstp.sonitalk.GaltonChat;
 import at.ac.fhstp.sonitalk.SoniTalkConfig;
 import at.ac.fhstp.sonitalk.utils.ConfigFactory;
 import at.ac.fhstp.sonitalk.utils.ID;
 
-public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.MessageCallback {
+public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.MessageCallback, DynamicConfiguration.ConfigurationChangeListener {
     private Button startListeningButton;
     private Button sendConfig0Channel0;
     private Button sendConfig1Channel0;
@@ -27,6 +31,16 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
     private Button sendAlgoButton;
     private TextView lastSentId;
     private TextView lastReceivedId;
+
+    private TextView config0;
+    private TextView config0Chan0;
+    private TextView config1;
+    private TextView config1Chan0;
+    private TextView config1Chan1;
+    private TextView config2;
+    private TextView config2Chan0;
+    private TextView config2Chan1;
+    private TextView config2Chan2;
 
     private GaltonChat galton;
 
@@ -45,6 +59,16 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
         sendAlgoButton = findViewById(R.id.algo_send);
         lastSentId = findViewById(R.id.last_generated_id);
         lastReceivedId = findViewById(R.id.last_received_id);
+        config0 = findViewById(R.id.config0Text);
+        config0Chan0 = findViewById(R.id.config0chan0Text);
+        config1 = findViewById(R.id.config1Text);
+        config1Chan0 = findViewById(R.id.config1chan0Text);
+        config1Chan1 = findViewById(R.id.config1chan1Text);
+        config2 = findViewById(R.id.config2Text);
+        config2Chan0 = findViewById(R.id.config2chan0Text);
+        config2Chan1 = findViewById(R.id.config2chan1Text);
+        config2Chan2 = findViewById(R.id.config2chan2Text);
+
 
         //create the api object
         try {
@@ -67,7 +91,7 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
             configs.add(0, config0);
             configs.add(1, config1);
             configs.add(2, config2);
-            galton = new GaltonChat(configs, this);
+            galton = new GaltonChat(configs, this, this);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -145,6 +169,28 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
                 lastReceivedId.setText(message);
             }
         });
+    }
 
+    @Override
+    public void onConfigurationChange(final int newConfigIndex) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                config0.setTextColor(Color.RED);
+                config1.setTextColor(Color.RED);
+                config2.setTextColor(Color.RED);
+                switch (newConfigIndex) {
+                    case 0:
+                        config0.setTextColor(Color.GREEN);
+                        break;
+                    case 1:
+                        config1.setTextColor(Color.GREEN);
+                        break;
+                    case 2:
+                        config2.setTextColor(Color.GREEN);
+                        break;
+                }
+            }
+        });
     }
 }

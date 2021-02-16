@@ -29,8 +29,10 @@ public class DynamicConfiguration extends AudioController {
     private long lastBothOccupiedTime;
 
 
+    private ConfigurationChangeListener callback;
+
     public interface ConfigurationChangeListener {
-        public void onConfigurationChange();
+        public void onConfigurationChange(int newConfigIndex);
     }
 
     public DynamicConfiguration(CircularArray historyBuffer, List<List<SoniTalkConfig>> configs) {
@@ -144,9 +146,15 @@ public class DynamicConfiguration extends AudioController {
         if (index != currentConfigIndex) {
             currentConfigIndex = index;
             Log.e(GaltonChat.TAG, "setting configuration to index " + index);
+            if (callback != null) {
+                callback.onConfigurationChange(index);
+            }
         }
     }
 
+    public void passCallback(ConfigurationChangeListener callback) {
+        this.callback = callback;
+    }
 
     public List<List<SoniTalkConfig>> getConfigurations() {
         return this.configurations;

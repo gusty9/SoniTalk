@@ -325,7 +325,6 @@ public class SoniTalkDecoder {
      * As soon as the historyBuffer is full every, it will be analyzed every loop run.
      */
     public void startDecoding() {
-        Log.e(GaltonChat.TAG, "StartDecoding!!!");
 //        if (! soniTalkContext.checkMicrophonePermission()) {
 //            throw new SecurityException("Does not have android.permission.RECORD_AUDIO.");
 //        }
