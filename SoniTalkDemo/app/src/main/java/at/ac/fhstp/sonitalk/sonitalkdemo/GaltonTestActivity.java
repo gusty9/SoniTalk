@@ -216,7 +216,7 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
                 config1Chan0.setTextColor(colors[1]);
                 config1Chan1.setTextColor(colors[2]);
                 config2Chan0.setTextColor(colors[3]);
-                config2Chan2.setTextColor(colors[4]);
+                config2Chan1.setTextColor(colors[4]);
                 config2Chan2.setTextColor(colors[5]);
             }
         });
