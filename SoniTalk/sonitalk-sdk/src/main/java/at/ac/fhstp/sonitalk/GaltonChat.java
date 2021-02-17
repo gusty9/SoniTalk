@@ -3,6 +3,7 @@ package at.ac.fhstp.sonitalk;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.os.Handler;
 import android.os.Process;
 import android.util.Log;
 
@@ -49,6 +50,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     private DynamicConfiguration dynamicConfiguration;
 
     private MessageCallback callback;
+    private Handler delayedTaskHandler;
 
     /**
      * Constructor. Each config should represent and individual non-overlapping channel
@@ -69,6 +71,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         this.audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, audioRecorderBufferSize);
         this.isRecording = false;
         this.callback = callback;
+        delayedTaskHandler = new Handler();
 
         //decoding variables
         this.decoderList = new ArrayList<>();
@@ -129,7 +132,9 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
             sender.send(encodeMessage(message, channelToSend), SONITALK_SENDER_REQUEST_CODE);
         } else {
             //all channels were occupied. Do something?
-            Log.e(TAG, "all channels are occupied");
+            Log.e(TAG, "all channels are occupied, attempting to resend message");
+            AttemptResendRunnable resendRunnable = new AttemptResendRunnable(message);
+            delayedTaskHandler.postDelayed(resendRunnable, dynamicConfiguration.getCurrentMessageLength());//maybe not over 2
         }
     }
 
@@ -237,6 +242,18 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         for (int i = 0; i < arrayLength; i++) {
             // Do we actually need float anywhere ? Switch to double ?
             output[i] = ((float) input[i]) / Short.MAX_VALUE;
+        }
+    }
+
+    public class AttemptResendRunnable implements Runnable {
+        private String message;
+        public AttemptResendRunnable(String message) {
+            this.message = message;
+        }
+
+        @Override
+        public void run() {
+            sendMessage(message);
         }
     }
 

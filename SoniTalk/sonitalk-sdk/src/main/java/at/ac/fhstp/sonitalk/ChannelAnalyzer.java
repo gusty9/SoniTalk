@@ -147,7 +147,7 @@ public class ChannelAnalyzer extends AudioController {
 
         boolean[] channelsAvailableCpy = new boolean[channelsAvailable.get(currentConfig).length];
         synchronized (channelsAvailable.get(currentConfig)) {
-            System.arraycopy(channelsAvailable, 0, channelsAvailableCpy, 0, channelsAvailable.get(currentConfig).length);
+            System.arraycopy(channelsAvailable.get(currentConfig), 0, channelsAvailableCpy, 0, channelsAvailableCpy.length);
         }
         for (int i = 0; i < channelsAvailableCpy.length; i++) {
             if (channelsAvailableCpy[i]) {
