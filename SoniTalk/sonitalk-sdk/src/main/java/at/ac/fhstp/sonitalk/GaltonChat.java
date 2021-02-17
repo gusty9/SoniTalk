@@ -36,6 +36,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     //minimum readable frequency = SAMPLE_RATE/2 = 22050
     public static final int SAMPLE_RATE = 44100;//should work with ~most~ devices
     private final int SONITALK_SENDER_REQUEST_CODE = 2;//todo uhh not sure what the request code is for but 2 works
+    private final int ATTEMPT_RESEND_THRESHOLD = 1;
 
     //configuration variables
     private List<SoniTalkDecoder> decoderList;
@@ -51,6 +52,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
 
     private MessageCallback callback;
     private Handler delayedTaskHandler;
+    private int attemptResendCounter;
 
     /**
      * Constructor. Each config should represent and individual non-overlapping channel
@@ -71,7 +73,8 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         this.audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, audioRecorderBufferSize);
         this.isRecording = false;
         this.callback = callback;
-        delayedTaskHandler = new Handler();
+        this.delayedTaskHandler = new Handler();
+        this.attemptResendCounter = 0;
 
         //decoding variables
         this.decoderList = new ArrayList<>();
@@ -125,16 +128,24 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      */
     public void sendMessage(String message) {
         //dynamicConfiguration.onPreMessageSend();
+        if (attemptResendCounter > ATTEMPT_RESEND_THRESHOLD) {
+            dynamicConfiguration.escalateConfig();
+            //channels might still be occupied after an escalation has been done, so reset the sender counter
+            attemptResendCounter = 0;
+        }
+
         int channelToSend = channelAnalyzer.getSendingChannel();
         if (channelToSend != -1) {
             //do not care about context, pass null
             SoniTalkSender sender = new SoniTalkSender(null);
             sender.send(encodeMessage(message, channelToSend), SONITALK_SENDER_REQUEST_CODE);
+            attemptResendCounter = 0;
         } else {
             //all channels were occupied. Do something?
             Log.e(TAG, "all channels are occupied, attempting to resend message");
             AttemptResendRunnable resendRunnable = new AttemptResendRunnable(message);
             delayedTaskHandler.postDelayed(resendRunnable, dynamicConfiguration.getCurrentMessageLength());//maybe not over 2
+            attemptResendCounter++;
         }
     }
 
