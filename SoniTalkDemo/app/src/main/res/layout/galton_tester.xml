@@ -53,6 +53,18 @@
         android:layout_height="wrap_content"
         android:text="send with selection algorithm"/>
 
+    <Button
+        android:id="@+id/start_test"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="start test" />
+
+    <Button
+        android:id="@+id/stop_test"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="stop test" />
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

@@ -21,7 +21,8 @@ import at.ac.fhstp.sonitalk.SoniTalkConfig;
 import at.ac.fhstp.sonitalk.utils.ConfigFactory;
 import at.ac.fhstp.sonitalk.utils.ID;
 
-public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.MessageCallback, DynamicConfiguration.ConfigurationChangeListener, ChannelAnalyzer.ChannelListener {
+public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.MessageCallback, DynamicConfiguration.ConfigurationChangeListener, ChannelAnalyzer.ChannelListener,
+GaltonChatTest.TestCallback {
     private Button startListeningButton;
     private Button sendConfig0Channel0;
     private Button sendConfig1Channel0;
@@ -30,6 +31,8 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
     private Button sendConfig2Channel1;
     private Button sendConfig2Channel2;
     private Button sendAlgoButton;
+    private Button startTestButton;
+    private Button stopTestButton;
     private TextView lastSentId;
     private TextView lastReceivedId;
 
@@ -44,6 +47,7 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
     private TextView config2Chan2;
 
     private GaltonChat galton;
+    private GaltonChatTest test;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -58,6 +62,8 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
         sendConfig2Channel1 = findViewById(R.id.config2_channel1);
         sendConfig2Channel2 = findViewById(R.id.config2_channel2);
         sendAlgoButton = findViewById(R.id.algo_send);
+        startTestButton = findViewById(R.id.start_test);
+        stopTestButton = findViewById(R.id.stop_test);
         lastSentId = findViewById(R.id.last_generated_id);
         lastReceivedId = findViewById(R.id.last_received_id);
         config0 = findViewById(R.id.config0Text);
@@ -96,6 +102,7 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
         } catch (Exception e) {
             e.printStackTrace();
         }
+        test = new GaltonChatTest(galton, this);
 
         //respond to inputs
         startListeningButton.setOnClickListener(new View.OnClickListener(){
@@ -151,6 +158,20 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
             @Override
             public void onClick(View v) {
                 galton.sendMessage(generateNewMessage());
+            }
+        });
+
+        startTestButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                test.startTest();
+            }
+        });
+
+        stopTestButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                test.stopTest();
             }
         });
 
@@ -218,6 +239,16 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
                 config2Chan0.setTextColor(colors[3]);
                 config2Chan1.setTextColor(colors[4]);
                 config2Chan2.setTextColor(colors[5]);
+            }
+        });
+    }
+
+    @Override
+    public void idSent(final String id) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                lastSentId.setText(id);
             }
         });
     }

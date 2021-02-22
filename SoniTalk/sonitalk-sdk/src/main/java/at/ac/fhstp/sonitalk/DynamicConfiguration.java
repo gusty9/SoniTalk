@@ -5,6 +5,7 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import at.ac.fhstp.sonitalk.utils.CircularArray;
 
@@ -114,7 +115,7 @@ public class DynamicConfiguration {
      */
     public void updateDeescalationTimer() {
         delayedTaskHandler.removeCallbacks(deescalateRunnable);
-        delayedTaskHandler.postDelayed(deescalateRunnable, configurations.get(currentConfigIndex).get(0).getMessageDurationMS());
+        delayedTaskHandler.postDelayed(deescalateRunnable, configurations.get(currentConfigIndex).get(0).getMessageDurationMS() / 2);
     }
 
     public void passCallback(ConfigurationChangeListener callback) {

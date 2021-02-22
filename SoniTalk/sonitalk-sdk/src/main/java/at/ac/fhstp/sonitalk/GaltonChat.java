@@ -9,6 +9,7 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import at.ac.fhstp.sonitalk.utils.CircularArray;
 import edu.emory.mathcs.backport.java.util.Arrays;
@@ -53,6 +54,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     private MessageCallback callback;
     private Handler delayedTaskHandler;
     private int attemptResendCounter;
+    private Random random;
 
     /**
      * Constructor. Each config should represent and individual non-overlapping channel
@@ -75,6 +77,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         this.callback = callback;
         this.delayedTaskHandler = new Handler();
         this.attemptResendCounter = 0;
+        this.random = new Random(System.nanoTime());
 
         //decoding variables
         this.decoderList = new ArrayList<>();
@@ -144,7 +147,8 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
             //all channels were occupied. Do something?
             Log.e(TAG, "all channels are occupied, attempting to resend message");
             AttemptResendRunnable resendRunnable = new AttemptResendRunnable(message);
-            delayedTaskHandler.postDelayed(resendRunnable, dynamicConfiguration.getCurrentMessageLength());//maybe not over 2
+            int messageDur = dynamicConfiguration.getCurrentMessageLength();
+            delayedTaskHandler.postDelayed(resendRunnable, generateRandom(messageDur, 2*messageDur));//maybe not over 2
             attemptResendCounter++;
         }
     }
@@ -200,7 +204,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         //dynamicConfiguration.startAnalysis();
         channelAnalyzer.startAnalysis();
         for (int i = 0; i < decoderList.size(); i++) {
-            //todo make this not fucking retarded as hell
+            //todo make this not fucking dumb as hell
             final int temp = i;
             new Thread() {
                 @Override
@@ -267,4 +271,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         }
     }
 
+    private long generateRandom(int min, int max) {
+        return random.nextInt((max - min) + 1) + min;
+    }
 }

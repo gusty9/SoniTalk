@@ -353,6 +353,7 @@ public class SoniTalkDecoder {
             audioRecorder.startRecording();
 
             // Wait until the audio recorder records ...
+
             if (audioRecorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) {
                 try {
                     Log.e("AudiorecorderState", "Not recording, calling thread.sleep");
