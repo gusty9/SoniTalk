@@ -44,7 +44,7 @@ public class ChannelAnalyzer extends AudioController {
      *          Reference to the microphone history buffer
      */
     public ChannelAnalyzer(DynamicConfiguration dynamicConfiguration, CircularArray historyBuffer) {
-        super(historyBuffer, dynamicConfiguration.getAnalysisWindowLength());
+        super(historyBuffer, getAnalysisWindowLength(dynamicConfiguration.getConfigurations().get(0).get(0)));
         this.dynamicConfiguration = dynamicConfiguration;
         this.channelsAvailable = new ArrayList<>();
         for (int i = 0; i < this.dynamicConfiguration.getNumberOfConfigs(); i++) {
@@ -128,6 +128,16 @@ public class ChannelAnalyzer extends AudioController {
                 }
             }
 
+            //only run this check if it is the current config
+            if (i == dynamicConfiguration.getCurrentConfigIndex() && i !=0) {
+                boolean allChannelsFullCheck = true;//set to true because a channel is 'false' if it is occupied
+                for (int j = 0; j < channelsAvailable.get(i).length; j++) {
+                    allChannelsFullCheck = allChannelsFullCheck && channelsAvailable.get(i)[j];
+                }
+                if (!allChannelsFullCheck) {
+                    dynamicConfiguration.updateDeescalationTimer();
+                }
+            }
 
         }
     }

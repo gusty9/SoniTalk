@@ -7,26 +7,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 import at.ac.fhstp.sonitalk.utils.CircularArray;
-import at.ac.fhstp.sonitalk.utils.DecoderUtils;
-import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D;
-import uk.me.berndporr.iirj.Butterworth;
 
 /**
  * Holds several configurations for a dynamic multi-channel acoustic
  * communication experience. A configuration is simply a list of SoniTalkConfig objects
  * @author Erik Gustafson
  */
-public class DynamicConfiguration extends AudioController {
-    private final int bandpassFilterOrder = 8;//todo figure out what this does
-    private final int messageHeaderFactor = 4;//todo test this a little bit more
+public class DynamicConfiguration {
 
     private List<List<SoniTalkConfig>> configurations;
     private List<boolean[]> availability;
     private int currentConfigIndex;
-    private boolean deescalationRequired;
     private Handler delayedTaskHandler;
-    private int deescalationTimer;
-    private long lastBothOccupiedTime;
+    private Runnable deescalateRunnable;
 
 
     private ConfigurationChangeListener callback;
@@ -36,7 +29,6 @@ public class DynamicConfiguration extends AudioController {
     }
 
     public DynamicConfiguration(CircularArray historyBuffer, List<List<SoniTalkConfig>> configs) {
-        super(historyBuffer, getAnalysisWindowLength(configs.get(0).get(0)));
         this.configurations = new ArrayList<>();
         this.configurations.addAll(configs);
         this.availability = new ArrayList<>();
@@ -47,64 +39,10 @@ public class DynamicConfiguration extends AudioController {
             }
         }
         this.currentConfigIndex = 0;
-        this.deescalationRequired = false;
         this.delayedTaskHandler = new Handler();
-        this.deescalationTimer = configs.get(currentConfigIndex).get(0).getMessageDurationMS() * 2;
-        this.lastBothOccupiedTime = -1;//prevent nulls
+        deescalateRunnable = new ConfigDescalationTimeoutRunnable();
     }
 
-    @Override
-    void analyzeSamples(float[] analysisHistoryBuffer) {
-        for (int i = 0; i < configurations.get(currentConfigIndex).size(); i++) {
-            int analysisWindowLength = getAnalysisWindowLength(configurations.get(currentConfigIndex).get(i));
-            //copy the samples from the buffer that were added most recently
-            float[] responseUpper = new float[analysisWindowLength];
-            float[] responseLower = new float[analysisWindowLength];
-            System.arraycopy(analysisHistoryBuffer, 0, responseUpper, 0, analysisWindowLength);
-            System.arraycopy(analysisHistoryBuffer, 0, responseLower, 0, analysisWindowLength);
-
-            //create the filtered arrays
-            double[] responseUpperDouble = new double[analysisWindowLength * 2];
-            double[] responseLowerDouble = new double[analysisWindowLength * 2];
-            int bandpassWidth = DecoderUtils.getBandpassWidth(configurations.get(currentConfigIndex).get(i).getnFrequencies(), configurations.get(currentConfigIndex).get(i).getFrequencySpace());
-            int centerFrequencyLower = configurations.get(currentConfigIndex).get(i).getFrequencyZero() + (bandpassWidth/2);
-            int centerFrequencyUpper = configurations.get(currentConfigIndex).get(i).getFrequencyZero() + bandpassWidth + (bandpassWidth/2);
-
-            //filter the arrays
-            //only filter 1/2 the bandpass width in order to decrease overlap
-            Butterworth butterworthUpper = new Butterworth();
-            butterworthUpper.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyUpper, bandpassWidth/2);
-            Butterworth butterworthLower = new Butterworth();
-            butterworthLower.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyLower, bandpassWidth/2);
-
-            for (int k = 0; k < responseLower.length; k++) {
-                responseUpperDouble[k] = butterworthUpper.filter(responseUpper[k]);
-                responseLowerDouble[k] = butterworthLower.filter(responseLower[k]);
-            }
-            DoubleFFT_1D fft = new DoubleFFT_1D(responseUpper.length);
-            fft.complexForward(responseUpperDouble);
-            fft.complexForward(responseLowerDouble);
-
-            double sumAbsResponseUpper = 0.0;
-            double sumAbsResponseLower = 0.0;
-
-            for (int k = 0; k < responseUpperDouble.length; k+=2) {
-                sumAbsResponseUpper += DecoderUtils.getComplexAbsolute(responseUpperDouble[k], responseUpperDouble[k+1]);
-                sumAbsResponseLower += DecoderUtils.getComplexAbsolute(responseLowerDouble[k], responseLowerDouble[k+1]);
-            }
-
-            if (sumAbsResponseUpper > messageHeaderFactor * sumAbsResponseLower) {
-                int timeoutTime = configurations.get(currentConfigIndex).get(i).getMessageDurationMS();
-                synchronized (availability.get(currentConfigIndex)) {
-                    availability.get(currentConfigIndex)[i] = false;
-                }
-                ConfigEscalationTimeoutRunnable runnable = new ConfigEscalationTimeoutRunnable(availability.get(currentConfigIndex), i);
-                delayedTaskHandler.postDelayed(runnable, timeoutTime);
-            }
-        }
-        //check for deescalation
-        //deescalationCheck();
-    }
 
     /**
      * @return
@@ -127,6 +65,11 @@ public class DynamicConfiguration extends AudioController {
         if (currentConfigIndex != configurations.size() -1) {
             Log.e(GaltonChat.TAG, "Configuration Escalation");
             currentConfigIndex++;
+            //start the de-escalation timer
+            updateDeescalationTimer();
+        }
+        if (callback != null) {
+            callback.onConfigurationChange(currentConfigIndex);
         }
     }
 
@@ -139,6 +82,9 @@ public class DynamicConfiguration extends AudioController {
         if (currentConfigIndex != 0) {
             Log.e(GaltonChat.TAG, "Configuration Deescalation");
             currentConfigIndex--;
+            if (callback != null) {
+                callback.onConfigurationChange(currentConfigIndex);
+            }
         }
     }
 
@@ -149,7 +95,23 @@ public class DynamicConfiguration extends AudioController {
             if (callback != null) {
                 callback.onConfigurationChange(index);
             }
+            if (index != 0) {
+                //state the deescalation timer since there is a configuration that is lower
+                updateDeescalationTimer();
+            }
         }
+    }
+
+    /**
+     * This should be called to remove the de-escalation timer and restart it.
+     * This is desired in 2 cases:
+     *      1: a channel just escalated
+     *      2: all  channels were overlapping full at the same time
+     * These are used as a rough estimate of a way to max throughput and reduce collisions
+     */
+    public void updateDeescalationTimer() {
+        delayedTaskHandler.removeCallbacks(deescalateRunnable);
+        delayedTaskHandler.postDelayed(deescalateRunnable, configurations.get(currentConfigIndex).get(0).getMessageDurationMS());
     }
 
     public void passCallback(ConfigurationChangeListener callback) {
@@ -160,35 +122,9 @@ public class DynamicConfiguration extends AudioController {
         return this.configurations;
     }
 
-    /**
-     * This should be called before a message is sent.
-     * The method will check if escalation is required, and will escalate
-     * or deescalate accordingly.
-     * @return
-     *      The determined configuration for sending
-     */
-    public void onPreMessageSend() {
-        boolean escalationRequired = false;
-        synchronized (availability.get(currentConfigIndex)) {
-            for (int i = 0; i < availability.get(currentConfigIndex).length; i++) {
-                escalationRequired = (escalationRequired || !availability.get(currentConfigIndex)[i]);
-            }
-        }
-
-        if (escalationRequired) {
-            escalateConfig();
-        } else if (deescalationRequired) {
-            deescalateConfig();
-        }
-    }
 
     public void onMessageReceived(int configIndex) {
         setConfigurationIndex(configIndex);
-    }
-
-
-    public int getAnalysisWindowLength() {
-        return getAnalysisWindowLength(configurations.get(currentConfigIndex).get(0));
     }
 
     public int getConfigSize(int config) {
@@ -207,28 +143,11 @@ public class DynamicConfiguration extends AudioController {
         return configurations.get(configIndex).get(0).getMessageDurationMS();
     }
 
-//    public void addConfigChangeListener(ConfigurationChangeListener listener) {
-//        this.callback = listener;
-//    }
 
-    /**
-     * Set flags back to true after a certain timer timeout
-     */
-    private class ConfigEscalationTimeoutRunnable implements Runnable {
-        private final boolean[] availability;
-        private final int index;
-
-        public ConfigEscalationTimeoutRunnable(boolean[] availability, int index) {
-            this.availability = availability;
-            this.index = index;
-        }
-
+    private class ConfigDescalationTimeoutRunnable implements Runnable {
         @Override
         public void run() {
-            //ensure concurrency
-            synchronized (availability) {
-                availability[index] = true;
-            }
+            DynamicConfiguration.this.deescalateConfig();
         }
     }
 }
