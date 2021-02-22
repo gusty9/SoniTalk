@@ -31,6 +31,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
          *          the message that was successfully decoded
          */
         void onMessageReceived(String message);
+        void onMessageSent(String message);
     }
 
     public static final String TAG = "GaltonChat";
@@ -142,6 +143,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
             //do not care about context, pass null
             SoniTalkSender sender = new SoniTalkSender(null);
             sender.send(encodeMessage(message, channelToSend), SONITALK_SENDER_REQUEST_CODE);
+            callback.onMessageSent(message);
             attemptResendCounter = 0;
         } else {
             //all channels were occupied. Do something?

@@ -13,46 +13,48 @@ public class GaltonChatTest {
     private Random random;
     private Handler delayedHandler;
     private Runnable sendMessage;
-    private TestCallback callback;
+    private boolean testIsRunning;
 
-    public interface TestCallback {
-        public void idSent(String id);
-    }
-
-    public GaltonChatTest(GaltonChat chat, TestCallback callback){
+    public GaltonChatTest(GaltonChat chat){
         this.chat = chat;
         this.random = new Random(System.nanoTime());//seed a random number generator
         delayedHandler = new Handler();
         sendMessage = new SendMessageRunnable();
-        this.callback = callback;
+        this.testIsRunning = true;
     }
 
     public void startTest() {
+        testIsRunning = true;
         chat.startListeningThread();
         delayedHandler.postDelayed(sendMessage, generateRandom(5000, 8000));
     }
 
     public void stopTest() {
+        testIsRunning = false;
         delayedHandler.removeCallbacks(sendMessage);
+    }
+
+    public void onSuccessfulMessageSent() {
+        delayedHandler.postDelayed(sendMessage, generateRandom(5000, 8000));
     }
 
     private class SendMessageRunnable implements Runnable {
         @Override
         public void run() {
-            //todo maybe add callbacks to the main activity to see this
             chat.sendMessage(generateNewMessage());
-            delayedHandler.postDelayed(sendMessage, generateRandom(5000,8000));
-            //todo probably have a way to post delayed after we can confirm the message was sent
         }
     }
 
     private String generateNewMessage() {
         String id = ID.generateRandomID();
-        callback.idSent(id);
         return id;
     }
 
     private long generateRandom(int min, int max) {
         return random.nextInt((max - min) + 1) + min;
+    }
+
+    public boolean isRunning() {
+        return testIsRunning;
     }
 }

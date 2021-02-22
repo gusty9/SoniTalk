@@ -127,6 +127,8 @@ public class SoniTalkSender {
         enhancer.setTargetGain(700);
         enhancer.setEnabled(true);
         int result = currentAudioTrack.write(message.getRawAudio(), 0, (winLenSamples/*+(winLenSamples/65)*/)); //put the whiteNoise shortarray into the player, buffersize winLenSamples are Shorts here
+        //after write is called - the play is guaranteed
+
         currentAudioTrack.play();
 
     }

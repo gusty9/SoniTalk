@@ -21,8 +21,7 @@ import at.ac.fhstp.sonitalk.SoniTalkConfig;
 import at.ac.fhstp.sonitalk.utils.ConfigFactory;
 import at.ac.fhstp.sonitalk.utils.ID;
 
-public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.MessageCallback, DynamicConfiguration.ConfigurationChangeListener, ChannelAnalyzer.ChannelListener,
-GaltonChatTest.TestCallback {
+public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.MessageCallback, DynamicConfiguration.ConfigurationChangeListener, ChannelAnalyzer.ChannelListener {
     private Button startListeningButton;
     private Button sendConfig0Channel0;
     private Button sendConfig1Channel0;
@@ -102,7 +101,7 @@ GaltonChatTest.TestCallback {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        test = new GaltonChatTest(galton, this);
+        test = new GaltonChatTest(galton);
 
         //respond to inputs
         startListeningButton.setOnClickListener(new View.OnClickListener(){
@@ -243,12 +242,17 @@ GaltonChatTest.TestCallback {
         });
     }
 
+
     @Override
-    public void idSent(final String id) {
+    public void onMessageSent(final String message) {
+        if (test.isRunning()) {
+            test.onSuccessfulMessageSent();
+        }
+
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                lastSentId.setText(id);
+                lastSentId.setText(message);
             }
         });
     }
