@@ -85,6 +85,9 @@ public class DynamicConfiguration {
             if (callback != null) {
                 callback.onConfigurationChange(currentConfigIndex);
             }
+            if (currentConfigIndex != 0) {
+                updateDeescalationTimer();
+            }
         }
     }
 
