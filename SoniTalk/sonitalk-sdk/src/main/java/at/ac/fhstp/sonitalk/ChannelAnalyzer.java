@@ -132,7 +132,7 @@ public class ChannelAnalyzer extends AudioController {
                             int[] temp = occupied.get(k);
                             ChannelAvailableRunnable waitMessageDuration = new ChannelAvailableRunnable(channelsAvailable, temp[0], temp[1]);
                             //only wait for the current config if the message was found in said buffer
-                            delayedTaskHandler.postDelayed(waitMessageDuration, dynamicConfiguration.getMessageLength(dynamicConfiguration.getCurrentConfigIndex()));
+                            delayedTaskHandler.postDelayed(waitMessageDuration, dynamicConfiguration.getMessageLength(i));//set it equal to the length the message was found on
 
                         }
                     }
