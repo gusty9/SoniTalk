@@ -187,6 +187,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         Log.e(TAG, receivedMessage.getDecodedMessage() + " config " + configIndex + " channel " + channelIndex);
         dynamicConfiguration.onMessageReceived(configIndex);
         callback.onMessageReceived(receivedMessage.getDecodedMessage());
+        //todo sometimes messages that do not exist are being decoded. Refine that more or add extra error checking?
     }
 
     @Override

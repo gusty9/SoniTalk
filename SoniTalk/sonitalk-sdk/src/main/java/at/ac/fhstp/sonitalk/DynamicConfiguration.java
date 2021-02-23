@@ -115,7 +115,7 @@ public class DynamicConfiguration {
      */
     public void updateDeescalationTimer() {
         delayedTaskHandler.removeCallbacks(deescalateRunnable);
-        delayedTaskHandler.postDelayed(deescalateRunnable, configurations.get(currentConfigIndex).get(0).getMessageDurationMS() / 2);
+        delayedTaskHandler.postDelayed(deescalateRunnable, configurations.get(currentConfigIndex).get(0).getMessageDurationMS() * 2);
     }
 
     public void passCallback(ConfigurationChangeListener callback) {

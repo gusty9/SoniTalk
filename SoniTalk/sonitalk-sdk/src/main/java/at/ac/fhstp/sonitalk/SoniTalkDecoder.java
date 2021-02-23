@@ -169,7 +169,6 @@ public class SoniTalkDecoder {
     /**
      * Constructor to be used with the GaltonChat SDK
      * @param config
-     * @param historyBuffer
      */
     SoniTalkDecoder(SoniTalkConfig config, int configIndex, int channelIndex) {
         this.Fs = GaltonChat.SAMPLE_RATE;
@@ -186,8 +185,8 @@ public class SoniTalkDecoder {
         this.frequencyOffsetForSpectrogram = 50;
         this.stepFactor = 8;
         this.bandPassFilterOrder = 8;
-        this.startFactor = 2.0;
-        this.endFactor = 2.0;
+        this.startFactor = 5.0;
+        this.endFactor = 5.0;
 
         winLenForSpectrogram = bitperiod;
         winLenForSpectrogramInSamples = Math.round(Fs * (float) winLenForSpectrogram/1000);
@@ -672,7 +671,8 @@ public class SoniTalkDecoder {
             if(sumAbsEndResponseLower > endFactor * sumAbsEndResponseUpper) {
                 // THIS IS TRUE IN CASE WE FOUND AN END FRAME NOW ITS TIME TO DECODE THE MESSAGE IN BETWEEN
                 //Log.d("EndResponseAvg", "detection with factor: " + sumAbsEndResponseLower / sumAbsEndResponseUpper + " and " + sumAbsStartResponseUpper/sumAbsStartResponseLower);
-
+                Log.e(GaltonChat.TAG, "config " + configIndex + " channel " + channelIndex + " "+ sumAbsStartResponseUpper + ", " + sumAbsStartResponseLower);
+                Log.e(GaltonChat.TAG, "tail: " + sumAbsEndResponseUpper + "," + sumAbsEndResponseLower);
                 analyzeMessage(analysisHistoryBuffer, readTimestamp);
 
             }

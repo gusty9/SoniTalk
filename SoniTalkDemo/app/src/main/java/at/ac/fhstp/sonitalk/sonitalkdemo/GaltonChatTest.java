@@ -26,7 +26,7 @@ public class GaltonChatTest {
     public void startTest() {
         testIsRunning = true;
         chat.startListeningThread();
-        delayedHandler.postDelayed(sendMessage, generateRandom(5000, 8000));
+        delayedHandler.postDelayed(sendMessage, generateRandom(0, 8000));
     }
 
     public void stopTest() {
@@ -35,7 +35,7 @@ public class GaltonChatTest {
     }
 
     public void onSuccessfulMessageSent() {
-        delayedHandler.postDelayed(sendMessage, generateRandom(5000, 8000));
+        delayedHandler.postDelayed(sendMessage, generateRandom(7000, 10000));
     }
 
     private class SendMessageRunnable implements Runnable {
