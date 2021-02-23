@@ -32,6 +32,7 @@ public class GaltonChatTest {
     public void stopTest() {
         testIsRunning = false;
         delayedHandler.removeCallbacks(sendMessage);
+        chat.stopListeningThread();
     }
 
     public void onSuccessfulMessageSent() {

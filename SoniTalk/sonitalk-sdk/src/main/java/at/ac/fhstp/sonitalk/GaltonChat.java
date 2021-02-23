@@ -30,8 +30,8 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
          * @param message
          *          the message that was successfully decoded
          */
-        void onMessageReceived(String message);
-        void onMessageSent(String message);
+        void onMessageReceived(String message, int configIndex, int channelIndex);
+        void onMessageSent(String message, int configIndex, int channelIndex);
     }
 
     public static final String TAG = "GaltonChat";
@@ -143,7 +143,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
             //do not care about context, pass null
             SoniTalkSender sender = new SoniTalkSender(null);
             sender.send(encodeMessage(message, channelToSend), SONITALK_SENDER_REQUEST_CODE);
-            callback.onMessageSent(message);
+            callback.onMessageSent(message, dynamicConfiguration.getCurrentConfigIndex(), channelToSend);
             attemptResendCounter = 0;
         } else {
             //all channels were occupied. Do something?
@@ -186,7 +186,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     public void onMessageReceived(SoniTalkMessage receivedMessage, int configIndex, int channelIndex) {
         Log.e(TAG, receivedMessage.getDecodedMessage() + " config " + configIndex + " channel " + channelIndex);
         dynamicConfiguration.onMessageReceived(configIndex);
-        callback.onMessageReceived(receivedMessage.getDecodedMessage());
+        callback.onMessageReceived(receivedMessage.getDecodedMessage(), configIndex, channelIndex);
         //todo sometimes messages that do not exist are being decoded. Refine that more or add extra error checking?
     }
 

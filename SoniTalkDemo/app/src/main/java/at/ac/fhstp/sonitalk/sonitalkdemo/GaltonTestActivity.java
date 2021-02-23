@@ -3,6 +3,7 @@ package at.ac.fhstp.sonitalk.sonitalkdemo;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -20,6 +21,10 @@ import at.ac.fhstp.sonitalk.GaltonChat;
 import at.ac.fhstp.sonitalk.SoniTalkConfig;
 import at.ac.fhstp.sonitalk.utils.ConfigFactory;
 import at.ac.fhstp.sonitalk.utils.ID;
+import io.reactivex.functions.Consumer;
+import ua.naiksoftware.stomp.Stomp;
+import ua.naiksoftware.stomp.StompClient;
+import ua.naiksoftware.stomp.dto.StompMessage;
 
 public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.MessageCallback, DynamicConfiguration.ConfigurationChangeListener, ChannelAnalyzer.ChannelListener {
     private Button startListeningButton;
@@ -47,6 +52,8 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
 
     private GaltonChat galton;
     private GaltonChatTest test;
+
+    private StompClient stompClient;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -163,7 +170,7 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
         startTestButton.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                test.startTest();
+
             }
         });
 
@@ -174,6 +181,7 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
             }
         });
 
+        connectStomp();
     }
 
     private String generateNewMessage() {
@@ -183,7 +191,9 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
     }
 
     @Override
-    public void onMessageReceived(final String message) {
+    public void onMessageReceived(final String message, int configIndex, int channelIndex) {
+        PostIdBackgroundTask task = new PostIdBackgroundTask(message, configIndex, channelIndex, "/dynamic/receive/");
+        task.execute();
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -244,10 +254,12 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
 
 
     @Override
-    public void onMessageSent(final String message) {
+    public void onMessageSent(final String message, int configIndex, int channelIndex) {
         if (test.isRunning()) {
             test.onSuccessfulMessageSent();
         }
+        PostIdBackgroundTask task = new PostIdBackgroundTask(message, configIndex, channelIndex, "/dynamic/send");
+        task.execute();
 
         runOnUiThread(new Runnable() {
             @Override
@@ -256,4 +268,22 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
             }
         });
     }
+
+    private void connectStomp() {
+        stompClient = Stomp.over(Stomp.ConnectionProvider.OKHTTP, "ws://" + PostIdBackgroundTask.IP + ":" + PostIdBackgroundTask.PORT + "/sockets/websocket");
+        stompClient.connect();
+        stompClient.topic("/waiting").subscribe(new Consumer<StompMessage>() {
+            @Override
+            public void accept(StompMessage stompMessage) throws Exception {
+                test.startTest();
+            }
+        });
+        stompClient.topic("/sending").subscribe(new Consumer<StompMessage>() {
+            @Override
+            public void accept(StompMessage stompMessage) throws Exception {
+                test.stopTest();
+            }
+        });
+    }
+
 }
