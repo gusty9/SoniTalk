@@ -6,7 +6,9 @@ import android.util.Log;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 import at.ac.fhstp.sonitalk.utils.CircularArray;
@@ -116,14 +118,23 @@ public class ChannelAnalyzer extends AudioController {
                         //if this is true, a message block was found in the most recently added samples to the buffer
                         //set this channel to occupied and set a timer to reset the channel
                         List<boolean[]> cpy;
+                        List<int[]> occupied = getOccupiedChannelsByIndex(i, j);
                         synchronized (mutex) {
-                            channelsAvailable.get(i)[j] = false;
+                            for (int k = 0; k < occupied.size(); k++) {
+                                int[] temp = occupied.get(k);
+                                channelsAvailable.get(temp[0])[temp[1]] = false;
+                            }
                             cpy = new ArrayList<>(channelsAvailable);
-                            //Log.e(GaltonChat.TAG, "config " + i + " channel " + j + " lower: " + sumAbsResponseLower + " upper: " + sumAbsResponseUpper);
                         }
                         callback.channelsUpdated(cpy);
-                        ChannelAvailableRunnable waitMessageDuration = new ChannelAvailableRunnable(channelsAvailable, i, j);
-                        delayedTaskHandler.postDelayed(waitMessageDuration, dynamicConfiguration.getMessageLength(i));
+
+                        for (int k = 0; k < occupied.size(); k++) {
+                            int[] temp = occupied.get(k);
+                            ChannelAvailableRunnable waitMessageDuration = new ChannelAvailableRunnable(channelsAvailable, temp[0], temp[1]);
+                            //only wait for the current config if the message was found in said buffer
+                            delayedTaskHandler.postDelayed(waitMessageDuration, dynamicConfiguration.getMessageLength(dynamicConfiguration.getCurrentConfigIndex()));
+
+                        }
                     }
                 }
             }
@@ -221,5 +232,52 @@ public class ChannelAnalyzer extends AudioController {
      */
     private int getRandomItemFromList(List<Integer> items) {
         return items.get(new Random().nextInt(items.size()));
+    }
+
+    private List<int[]> getOccupiedChannelsByIndex(int config, int channel) {
+        List<int[]> occupiedIndices = new ArrayList<>();
+        switch(config) {
+            case 0:
+                occupiedIndices.add(new int[]{config,channel});
+                occupiedIndices.add(new int[]{1,0});
+                occupiedIndices.add(new int[]{1,1});
+                occupiedIndices.add(new int[]{2,0});
+                occupiedIndices.add(new int[]{2,1});
+                occupiedIndices.add(new int[]{2,2});
+                break;
+
+            case 1:
+                occupiedIndices.add(new int[]{0,0});
+                occupiedIndices.add(new int[]{2,1});
+                occupiedIndices.add(new int[]{config, channel});
+                switch(channel) {
+                    case 0:
+                        occupiedIndices.add(new int[]{2,0});
+                        break;
+                    case 1:
+                        occupiedIndices.add(new int[]{2,2});
+                        break;
+                }
+                break;
+
+            case 2:
+                occupiedIndices.add(new int[]{config, channel});
+                occupiedIndices.add(new int[]{0,0});
+                switch (channel) {
+                    case 0:
+                        occupiedIndices.add(new int[]{1,0});
+                        break;
+                    case 1:
+                        occupiedIndices.add(new int[]{1,0});
+                        occupiedIndices.add(new int[]{1,1});
+                        break;
+
+                    case 2:
+                        occupiedIndices.add(new int[]{1,1});
+                        break;
+                }
+                break;
+        }
+        return occupiedIndices;
     }
 }
