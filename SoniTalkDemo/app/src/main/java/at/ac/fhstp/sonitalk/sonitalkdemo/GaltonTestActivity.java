@@ -3,6 +3,7 @@ package at.ac.fhstp.sonitalk.sonitalkdemo;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -192,7 +193,9 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
 
     @Override
     public void onMessageReceived(final String message, int configIndex, int channelIndex) {
-        PostIdBackgroundTask task = new PostIdBackgroundTask(message, configIndex, channelIndex, "/dynamic/receive/");
+
+       String serial =  Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+        PostIdBackgroundTask task = new PostIdBackgroundTask(message, configIndex, channelIndex, serial,"/dynamic/receive/");
         task.execute();
         runOnUiThread(new Runnable() {
             @Override
@@ -258,7 +261,8 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
         if (test.isRunning()) {
             test.onSuccessfulMessageSent();
         }
-        PostIdBackgroundTask task = new PostIdBackgroundTask(message, configIndex, channelIndex, "/dynamic/send");
+        String serial =  Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+        PostIdBackgroundTask task = new PostIdBackgroundTask(message, configIndex, channelIndex, serial, "/dynamic/send");
         task.execute();
 
         runOnUiThread(new Runnable() {

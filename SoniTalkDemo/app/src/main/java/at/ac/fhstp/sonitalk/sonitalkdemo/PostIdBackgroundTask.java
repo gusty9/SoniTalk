@@ -1,6 +1,7 @@
 package at.ac.fhstp.sonitalk.sonitalkdemo;
 
 import android.os.AsyncTask;
+import android.provider.Settings;
 
 import org.json.JSONObject;
 
@@ -18,13 +19,13 @@ public class PostIdBackgroundTask extends AsyncTask<String, String, String> {
     public static final String IP = "192.168.1.110";
     public static final String PORT = "8080";
 
-    public PostIdBackgroundTask(String message, int configIndex, int channelindex, String endpoint) {
+    public PostIdBackgroundTask(String message, int configIndex, int channelindex, String serial, String endpoint) {
         data = new JSONObject();
         try {
             data.put("id", message);
             data.put("config", configIndex);
             data.put("channel", channelindex);
-            data.put("serial", android.os.Build.MODEL);//todo this should be unique
+            data.put("serial", serial);//todo this should be unique
         } catch (Exception e) {
             e.printStackTrace();
         }
