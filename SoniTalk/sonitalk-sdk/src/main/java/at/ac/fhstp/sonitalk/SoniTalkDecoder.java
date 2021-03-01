@@ -671,8 +671,6 @@ public class SoniTalkDecoder {
             if(sumAbsEndResponseLower > endFactor * sumAbsEndResponseUpper) {
                 // THIS IS TRUE IN CASE WE FOUND AN END FRAME NOW ITS TIME TO DECODE THE MESSAGE IN BETWEEN
                 //Log.d("EndResponseAvg", "detection with factor: " + sumAbsEndResponseLower / sumAbsEndResponseUpper + " and " + sumAbsStartResponseUpper/sumAbsStartResponseLower);
-                Log.e(GaltonChat.TAG, "config " + configIndex + " channel " + channelIndex + " "+ sumAbsStartResponseUpper + ", " + sumAbsStartResponseLower);
-                Log.e(GaltonChat.TAG, "tail: " + sumAbsEndResponseUpper + "," + sumAbsEndResponseLower);
                 analyzeMessage(analysisHistoryBuffer, readTimestamp);
 
             }

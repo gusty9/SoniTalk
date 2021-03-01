@@ -132,7 +132,8 @@ public class ChannelAnalyzer extends AudioController {
                             int[] temp = occupied.get(k);
                             ChannelAvailableRunnable waitMessageDuration = new ChannelAvailableRunnable(channelsAvailable, temp[0], temp[1]);
                             //only wait for the current config if the message was found in said buffer
-                            delayedTaskHandler.postDelayed(waitMessageDuration, dynamicConfiguration.getMessageLength(i));//set it equal to the length the message was found on
+                            int waitTime = (int) Math.round((dynamicConfiguration.getMessageLength(i) + dynamicConfiguration.getMessageLength(dynamicConfiguration.getCurrentConfigIndex()))/2.0);
+                            delayedTaskHandler.postDelayed(waitMessageDuration, waitTime);//set it equal to the length the message was found on
 
                         }
                     }
@@ -234,30 +235,28 @@ public class ChannelAnalyzer extends AudioController {
         return items.get(new Random().nextInt(items.size()));
     }
 
+    /**
+     * Set flags for channels that overlap the spectrum
+     * only set channels occupied to configurations that are HIGHER
+     * than the current configuration - to avoid false occupation
+     * @param config
+     *          configuration that a occupied channel was detected on
+     * @param channel
+     *          the channel that was occupied
+     * @return
+     *      a list of {config, channel} pairs that should also be considered occupiedd
+     *      based on the detection of this message
+     */
     private List<int[]> getOccupiedChannelsByIndex(int config, int channel) {
         List<int[]> occupiedIndices = new ArrayList<>();
         switch(config) {
             case 0:
                 occupiedIndices.add(new int[]{config,channel});
-//                occupiedIndices.add(new int[]{1,0});
-//                occupiedIndices.add(new int[]{1,1});
-//                occupiedIndices.add(new int[]{2,0});
-//                occupiedIndices.add(new int[]{2,1});
-//                occupiedIndices.add(new int[]{2,2});
                 break;
 
             case 1:
                 occupiedIndices.add(new int[]{0,0});
-//                occupiedIndices.add(new int[]{2,1});
                 occupiedIndices.add(new int[]{config, channel});
-                switch(channel) {
-                    case 0:
-//                        occupiedIndices.add(new int[]{2,0});
-                        break;
-                    case 1:
-//                        occupiedIndices.add(new int[]{2,2});
-                        break;
-                }
                 break;
 
             case 2:
@@ -265,15 +264,15 @@ public class ChannelAnalyzer extends AudioController {
                 occupiedIndices.add(new int[]{0,0});
                 switch (channel) {
                     case 0:
-//                        occupiedIndices.add(new int[]{1,0});
+                        occupiedIndices.add(new int[]{1,0});
                         break;
                     case 1:
-//                        occupiedIndices.add(new int[]{1,0});
-//                        occupiedIndices.add(new int[]{1,1});
+                        occupiedIndices.add(new int[]{1,0});
+                        occupiedIndices.add(new int[]{1,1});
                         break;
 
                     case 2:
-//                        occupiedIndices.add(new int[]{1,1});
+                        occupiedIndices.add(new int[]{1,1});
                         break;
                 }
                 break;

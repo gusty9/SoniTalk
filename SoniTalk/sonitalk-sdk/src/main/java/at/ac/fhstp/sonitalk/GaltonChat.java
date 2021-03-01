@@ -38,7 +38,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     //minimum readable frequency = SAMPLE_RATE/2 = 22050
     public static final int SAMPLE_RATE = 44100;//should work with ~most~ devices
     private final int SONITALK_SENDER_REQUEST_CODE = 2;//todo uhh not sure what the request code is for but 2 works
-    private final int ATTEMPT_RESEND_THRESHOLD = 1;
+    private final int ATTEMPT_RESEND_THRESHOLD = 2;
 
     //configuration variables
     private List<SoniTalkDecoder> decoderList;
@@ -150,7 +150,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
             Log.e(TAG, "all channels are occupied, attempting to resend message");
             AttemptResendRunnable resendRunnable = new AttemptResendRunnable(message);
             int messageDur = dynamicConfiguration.getCurrentMessageLength();
-            delayedTaskHandler.postDelayed(resendRunnable, generateRandom(messageDur, 2*messageDur));//maybe not over 2
+            delayedTaskHandler.postDelayed(resendRunnable, generateRandom(messageDur, (int) Math.round(2.5*messageDur)));//maybe not over 2
             attemptResendCounter++;
         }
     }
@@ -185,7 +185,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     @Override
     public void onMessageReceived(SoniTalkMessage receivedMessage, int configIndex, int channelIndex) {
         Log.e(TAG, receivedMessage.getDecodedMessage() + " config " + configIndex + " channel " + channelIndex);
-        dynamicConfiguration.onMessageReceived(configIndex);
+        //dynamicConfiguration.onMessageReceived(configIndex);
         callback.onMessageReceived(receivedMessage.getDecodedMessage(), configIndex, channelIndex);
         //todo sometimes messages that do not exist are being decoded. Refine that more or add extra error checking?
     }

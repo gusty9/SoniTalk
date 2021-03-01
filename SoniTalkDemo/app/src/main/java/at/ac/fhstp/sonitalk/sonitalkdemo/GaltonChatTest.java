@@ -26,7 +26,7 @@ public class GaltonChatTest {
     public void startTest() {
         testIsRunning = true;
         chat.startListeningThread();
-        delayedHandler.postDelayed(sendMessage, generateRandom(0, 8000));
+        delayedHandler.postDelayed(sendMessage, generateRandom(0, 10000)); //random time to send first id between 0-10 seconds
     }
 
     public void stopTest() {
@@ -36,7 +36,7 @@ public class GaltonChatTest {
     }
 
     public void onSuccessfulMessageSent() {
-        delayedHandler.postDelayed(sendMessage, generateRandom(7000, 10000));
+        delayedHandler.postDelayed(sendMessage, generateRandom(8000, 16000));//send the next message random between 8-16 seconds
     }
 
     private class SendMessageRunnable implements Runnable {

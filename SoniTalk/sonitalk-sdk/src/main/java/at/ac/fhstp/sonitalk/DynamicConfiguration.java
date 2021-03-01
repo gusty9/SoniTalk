@@ -73,7 +73,6 @@ public class DynamicConfiguration {
             callback.onConfigurationChange(currentConfigIndex);
         }
     }
-
     /**
      * deescalate the current configuration to the previous one
      * in the configuration list
@@ -115,7 +114,7 @@ public class DynamicConfiguration {
      */
     public void updateDeescalationTimer() {
         delayedTaskHandler.removeCallbacks(deescalateRunnable);
-        delayedTaskHandler.postDelayed(deescalateRunnable, configurations.get(currentConfigIndex).get(0).getMessageDurationMS() * 2);
+        delayedTaskHandler.postDelayed(deescalateRunnable, (int)Math.round(configurations.get(currentConfigIndex).get(0).getMessageDurationMS() * 2.5));
     }
 
     public void passCallback(ConfigurationChangeListener callback) {
