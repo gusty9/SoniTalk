@@ -2,6 +2,7 @@ package at.ac.fhstp.sonitalk.sonitalkdemo;
 
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
@@ -40,6 +41,7 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
     private Button stopTestButton;
     private TextView lastSentId;
     private TextView lastReceivedId;
+    private TextView deviceId;
 
     private TextView config0;
     private TextView config0Chan0;
@@ -82,7 +84,8 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
         config2Chan0 = findViewById(R.id.config2chan0Text);
         config2Chan1 = findViewById(R.id.config2chan1Text);
         config2Chan2 = findViewById(R.id.config2chan2Text);
-
+        deviceId = findViewById(R.id.deviceID);
+        deviceId.setText(Build.MODEL + "_" + Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID));
 
         //create the api object
         try {
@@ -194,7 +197,7 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
     @Override
     public void onMessageReceived(final String message, int configIndex, int channelIndex) {
 
-       String serial =  Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+       String serial = Build.MODEL + "_" + Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
         PostIdBackgroundTask task = new PostIdBackgroundTask(message, configIndex, channelIndex, serial,"/dynamic/receive/");
         task.execute();
         runOnUiThread(new Runnable() {
@@ -261,7 +264,7 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
         if (test.isRunning()) {
             test.onSuccessfulMessageSent();
         }
-        String serial =  Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+        String serial = Build.MODEL + "_" +  Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
         PostIdBackgroundTask task = new PostIdBackgroundTask(message, configIndex, channelIndex, serial, "/dynamic/send");
         task.execute();
 

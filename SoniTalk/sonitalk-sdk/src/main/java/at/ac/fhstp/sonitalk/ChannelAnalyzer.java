@@ -26,7 +26,7 @@ import uk.me.berndporr.iirj.Butterworth;
  */
 public class ChannelAnalyzer extends AudioController {
     private final int bandpassFilterOrder = 8;//todo figure out what this does
-    private final int messageHeaderFactor = 4;//todo test this a little bit more
+    private final int messageHeaderFactor = 6;//todo test this a little bit more
 
     private List<boolean[]> channelsAvailable;
     private final Object mutex = new Object();
@@ -239,23 +239,23 @@ public class ChannelAnalyzer extends AudioController {
         switch(config) {
             case 0:
                 occupiedIndices.add(new int[]{config,channel});
-                occupiedIndices.add(new int[]{1,0});
-                occupiedIndices.add(new int[]{1,1});
-                occupiedIndices.add(new int[]{2,0});
-                occupiedIndices.add(new int[]{2,1});
-                occupiedIndices.add(new int[]{2,2});
+//                occupiedIndices.add(new int[]{1,0});
+//                occupiedIndices.add(new int[]{1,1});
+//                occupiedIndices.add(new int[]{2,0});
+//                occupiedIndices.add(new int[]{2,1});
+//                occupiedIndices.add(new int[]{2,2});
                 break;
 
             case 1:
                 occupiedIndices.add(new int[]{0,0});
-                occupiedIndices.add(new int[]{2,1});
+//                occupiedIndices.add(new int[]{2,1});
                 occupiedIndices.add(new int[]{config, channel});
                 switch(channel) {
                     case 0:
-                        occupiedIndices.add(new int[]{2,0});
+//                        occupiedIndices.add(new int[]{2,0});
                         break;
                     case 1:
-                        occupiedIndices.add(new int[]{2,2});
+//                        occupiedIndices.add(new int[]{2,2});
                         break;
                 }
                 break;
@@ -265,15 +265,15 @@ public class ChannelAnalyzer extends AudioController {
                 occupiedIndices.add(new int[]{0,0});
                 switch (channel) {
                     case 0:
-                        occupiedIndices.add(new int[]{1,0});
+//                        occupiedIndices.add(new int[]{1,0});
                         break;
                     case 1:
-                        occupiedIndices.add(new int[]{1,0});
-                        occupiedIndices.add(new int[]{1,1});
+//                        occupiedIndices.add(new int[]{1,0});
+//                        occupiedIndices.add(new int[]{1,1});
                         break;
 
                     case 2:
-                        occupiedIndices.add(new int[]{1,1});
+//                        occupiedIndices.add(new int[]{1,1});
                         break;
                 }
                 break;

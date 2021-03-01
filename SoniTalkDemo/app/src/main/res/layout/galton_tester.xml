@@ -93,6 +93,25 @@
         android:orientation="horizontal">
 
         <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Device ID"
+            android:padding="4dp"/>
+
+        <TextView
+            android:id="@+id/deviceID"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="4dp"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
             android:textColor="#FF00FF00"
             android:id="@+id/config0Text"
             android:layout_width="wrap_content"
