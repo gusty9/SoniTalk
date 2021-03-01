@@ -113,8 +113,8 @@ public class DynamicConfiguration {
      * These are used as a rough estimate of a way to max throughput and reduce collisions
      */
     public void updateDeescalationTimer() {
-        delayedTaskHandler.removeCallbacks(deescalateRunnable);
-        delayedTaskHandler.postDelayed(deescalateRunnable, (int)Math.round(configurations.get(currentConfigIndex).get(0).getMessageDurationMS() * 2.5));
+       // delayedTaskHandler.removeCallbacks(deescalateRunnable);
+        //delayedTaskHandler.postDelayed(deescalateRunnable, (int)Math.round(configurations.get(currentConfigIndex).get(0).getMessageDurationMS() * 2.5));
     }
 
     public void passCallback(ConfigurationChangeListener callback) {
