@@ -37,6 +37,7 @@ public class ChannelAnalyzer extends AudioController {
     private int bucketWidth;
     private int analysisWindowLength;
     private final int TIMER_FOR_SMOOTHING = 750; //has to be 'low' for .5 sec
+    private final double VARIANCE_THRESHOLD = 1E-5;
 
     private ChannelListener callback;
 
@@ -62,7 +63,7 @@ public class ChannelAnalyzer extends AudioController {
         this.delayedTaskHandler = new Handler();
         bucketCenterFreq = new int[]{18675, 20025, 21375};
         smoothingCounter = new long[]{0,0,0};
-        bucketWidth = 625;//?
+        bucketWidth = 1000;//?
         analysisWindowLength = Math.round((float)((100 * (float) GaltonChat.SAMPLE_RATE/1000)/4));
     }
 
@@ -88,19 +89,36 @@ public class ChannelAnalyzer extends AudioController {
             fft.complexForward(freqResponse);
 
             double sumFft = 0.0;
-            double variance = 0.0;
 
-            for (int k = 0; k < freqResponse.length; k+=2) {
-                sumFft += DecoderUtils.getComplexAbsolute(freqResponse[k], freqResponse[k+1]);
-            }
+            double variance = 0.0;
+            double[] normalized = new double[analysisWindowLength];
+            int helper = 0;
+            double normalizedSum = 0.0;
+            double normalizedAvg = 0.0;
+
             for (int k = 0; k < freqResponse.length; k+=2) {
                 double d = DecoderUtils.getComplexAbsolute(freqResponse[k], freqResponse[k+1]);
-                variance += Math.pow(( d - sumFft ), 2.0);
+                sumFft += d;
+                normalized[helper] = d;
+                helper++;
             }
 
-            variance = variance / (analysisWindowLength - 1);
+            for (int k = 0; k < normalized.length; k++) {
+                normalized[k] = normalized[k] / sumFft;
+                normalizedSum += normalized[k];
+            }
+            normalizedAvg = normalizedSum / normalized.length;
 
-            if (variance > 50) {
+            for (int k = 0; k < normalized.length; k++) {
+               variance += Math.pow((normalized[k] - normalizedAvg), 2.0);
+            }
+
+            variance = variance / (normalized.length - 1);
+
+
+
+            if (variance > VARIANCE_THRESHOLD) {
+                Log.e(GaltonChat.TAG, "Bucket " + i + " variance " + variance);
                 bucketAvailable[i] = false;
                 smoothingCounter[i] = System.currentTimeMillis();
             } else if (System.currentTimeMillis() - smoothingCounter[i] < TIMER_FOR_SMOOTHING) {
