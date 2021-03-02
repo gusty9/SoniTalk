@@ -118,7 +118,6 @@ public class ChannelAnalyzer extends AudioController {
 
 
             if (variance > VARIANCE_THRESHOLD) {
-                Log.e(GaltonChat.TAG, "Bucket " + i + " variance " + variance);
                 bucketAvailable[i] = false;
                 smoothingCounter[i] = System.currentTimeMillis();
             } else if (System.currentTimeMillis() - smoothingCounter[i] < TIMER_FOR_SMOOTHING) {

@@ -324,6 +324,7 @@ public class SoniTalkDecoder {
      * As soon as the historyBuffer is full every, it will be analyzed every loop run.
      */
     public void startDecoding() {
+        setLoopStopped(false);
 //        if (! soniTalkContext.checkMicrophonePermission()) {
 //            throw new SecurityException("Does not have android.permission.RECORD_AUDIO.");
 //        }
@@ -1035,9 +1036,9 @@ public class SoniTalkDecoder {
         //Log.d(TAG, "Stop receiving.");
         setLoopStopped(true);
 
-        soniTalkContext.cancelNotificationReceiving();
+        //soniTalkContext.cancelNotificationReceiving();
 
-        delayhandler.removeCallbacksAndMessages(null); // Consider doing it more fine grained
+        //delayhandler.removeCallbacksAndMessages(null); // Consider doing it more fine grained
         List<Runnable> cancelledRunnables = threadExecutor.shutdownNow();
         if (!cancelledRunnables.isEmpty())
             Log.d(TAG, "Cancelled " + cancelledRunnables.size() + " tasks.");
@@ -1074,7 +1075,7 @@ public class SoniTalkDecoder {
         return loopStopped;
     }
 
-    private synchronized void setLoopStopped(boolean loopStopped) {// Consider using an internal object for the synchronization
+    public synchronized void setLoopStopped(boolean loopStopped) {// Consider using an internal object for the synchronization
         this.loopStopped = loopStopped;
     }
 

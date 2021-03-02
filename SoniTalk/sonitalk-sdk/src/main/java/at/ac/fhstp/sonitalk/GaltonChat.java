@@ -38,7 +38,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     //minimum readable frequency = SAMPLE_RATE/2 = 22050
     public static final int SAMPLE_RATE = 44100;//should work with ~most~ devices
     private final int SONITALK_SENDER_REQUEST_CODE = 2;//todo uhh not sure what the request code is for but 2 works
-    private final int ATTEMPT_RESEND_THRESHOLD = 2;
+    private final int ATTEMPT_RESEND_THRESHOLD = 1;
 
     //configuration variables
     private List<SoniTalkDecoder> decoderList;
@@ -47,7 +47,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     private final CircularArray historyBuffer;//this is NOT thread safe. wrap in 'synchronized' block when accessing
     private int audioRecorderBufferSize;
     private AudioRecord audioRecord;
-    private final Thread recordingThread;
+    private Thread recordingThread;
     private boolean isRecording;
     private ChannelAnalyzer channelAnalyzer;
     private DynamicConfiguration dynamicConfiguration;
@@ -56,6 +56,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     private Handler delayedTaskHandler;
     private int attemptResendCounter;
     private Random random;
+    private AttemptResendRunnable resendRunnable;
 
     /**
      * Constructor. Each config should represent and individual non-overlapping channel
@@ -90,36 +91,6 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
             }
         }
 
-        this.recordingThread = new Thread() {
-            @Override
-            public void run() {
-                super.run();
-                try {
-                    android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                boolean run = true;//flag for exiting while loop
-                audioRecord.startRecording();
-                short[] temp = new short[audioRecorderBufferSize];
-                float[] current = new float[audioRecorderBufferSize];
-                while (run) {
-                    //read in the data
-                    int bytesRead = audioRecord.read(temp, 0 , audioRecorderBufferSize);
-                    if (bytesRead == audioRecorderBufferSize) { //ensure we read enough bytes
-                        convertShortToFloat(temp, current, audioRecorderBufferSize);
-                        synchronized (GaltonChat.this.historyBuffer) {
-                            historyBuffer.add(current);
-                        }
-                    }
-                    //check to see if the recording thread should be stopped
-                    if (Thread.currentThread().isInterrupted()) {
-                        run = false;
-                        audioRecord.stop();
-                    }
-                }
-            }
-        };
 
     }
 
@@ -148,7 +119,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         } else {
             //all channels were occupied. Do something?
             Log.e(TAG, "all channels are occupied, attempting to resend message");
-            AttemptResendRunnable resendRunnable = new AttemptResendRunnable(message);
+            resendRunnable = new AttemptResendRunnable(message);
             int messageDur = dynamicConfiguration.getCurrentMessageLength();
             delayedTaskHandler.postDelayed(resendRunnable, generateRandom(messageDur, (int) Math.round(2.5*messageDur)));//maybe not over 2
             attemptResendCounter++;
@@ -203,8 +174,37 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      */
     public void startListeningThread() {
         isRecording = true;
+        recordingThread = new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                try {
+                    android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                boolean run = true;//flag for exiting while loop
+                audioRecord.startRecording();
+                short[] temp = new short[audioRecorderBufferSize];
+                float[] current = new float[audioRecorderBufferSize];
+                while (run) {
+                    //read in the data
+                    int bytesRead = audioRecord.read(temp, 0 , audioRecorderBufferSize);
+                    if (bytesRead == audioRecorderBufferSize) { //ensure we read enough bytes
+                        convertShortToFloat(temp, current, audioRecorderBufferSize);
+                        synchronized (GaltonChat.this.historyBuffer) {
+                            historyBuffer.add(current);
+                        }
+                    }
+                    //check to see if the recording thread should be stopped
+                    if (Thread.currentThread().isInterrupted()) {
+                        run = false;
+                        audioRecord.stop();
+                    }
+                }
+            }
+        };
         recordingThread.start();
-        //dynamicConfiguration.startAnalysis();
         channelAnalyzer.startAnalysis();
         for (int i = 0; i < decoderList.size(); i++) {
             //todo make this not fucking dumb as hell
@@ -223,12 +223,19 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      * Tells the recording thread to stop collecting data
      */
     public void stopListeningThread() {
-        isRecording = false;
+
         channelAnalyzer.stopAnalysis();//stop the channel analyzer
-        for (int i = 0; i < decoderList.size(); i++) {
-            decoderList.get(i).stopDecoder();
+        if (resendRunnable != null) {
+            delayedTaskHandler.removeCallbacks(resendRunnable);
         }
-        recordingThread.interrupt();//tell the thread to stop
+
+        for (int i = 0; i < decoderList.size(); i++) {
+            decoderList.get(i).setLoopStopped(true);
+        }
+        if (isRecording) {
+            recordingThread.interrupt();//tell the thread to stop
+        }
+        isRecording = false;
     }
 
     //method used for testing - force a send on what I want to see if the system is working appropriately

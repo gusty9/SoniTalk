@@ -15,7 +15,7 @@ public abstract class AudioController {
 
     private final CircularArray historyBuffer;
     private boolean isAnalyzing;
-    private final Thread analysisThread;
+    private Thread analysisThread;
     private int analysisWindowLength;
 
     /**
@@ -29,6 +29,12 @@ public abstract class AudioController {
         this.historyBuffer = historyBuffer;
         this.isAnalyzing = false;
         this.analysisWindowLength = analysisWindowLength;
+    }
+
+    /**
+     * Start recording samples and giving the subclass a callback
+     */
+    public void startAnalysis() {
         this.analysisThread = new Thread() {
             @Override
             public void run() {
@@ -46,22 +52,18 @@ public abstract class AudioController {
                 }
             }
         };
-    }
-
-    /**
-     * Start recording samples and giving the subclass a callback
-     */
-    public void startAnalysis() {
-        isAnalyzing = true;
         analysisThread.start();
+        isAnalyzing = true;
     }
 
     /**
      * Shut down the analysis thread
      */
     public void stopAnalysis() {
+        if (isAnalyzing) {
+            analysisThread.interrupt();
+        }
         isAnalyzing = false;
-        analysisThread.isInterrupted();
     }
 
     /**
