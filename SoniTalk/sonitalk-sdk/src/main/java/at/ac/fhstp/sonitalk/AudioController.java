@@ -42,7 +42,7 @@ public abstract class AudioController {
                 boolean run = true;
                 float[] analysisHistoryBuffer;
                 while (run) {
-                    synchronized (AudioController.this.historyBuffer) {//please ffs
+                    synchronized (GaltonChat.historyBufferMutex) {//please ffs
                         analysisHistoryBuffer = historyBuffer.getLastWindow(analysisWindowLength);
                     }
                     analyzeSamples(analysisHistoryBuffer);

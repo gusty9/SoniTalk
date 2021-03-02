@@ -19,6 +19,8 @@
 
 package at.ac.fhstp.sonitalk;
 
+import at.ac.fhstp.sonitalk.utils.DecoderUtils;
+
 /**
  * Configuration, or profile, used to transmit data. The emitter and receiver of a message must use
  * the same configuration. A crucial use case will be transmitting with several profiles simultaneously.
@@ -54,6 +56,15 @@ public class SoniTalkConfig {
 
     public int getBitperiod() {
         return bitperiod;
+    }
+
+    public int getAnalysisWinLen(int sampleRate) {
+        int bitperiodInSamples = (int)Math.round(bitperiod * (float)sampleRate/1000);
+        return  (int)Math.round((float) bitperiodInSamples / 2 );
+    }
+
+    public int getBandpassWidth() {
+        return DecoderUtils.getBandpassWidth(nFrequencies, frequencySpace);
     }
 
     public void setBitperiod(int bitperiod) {

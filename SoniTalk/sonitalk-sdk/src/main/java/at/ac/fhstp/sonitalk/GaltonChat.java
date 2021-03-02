@@ -41,10 +41,11 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     private final int ATTEMPT_RESEND_THRESHOLD = 1;
 
     //configuration variables
-    private List<SoniTalkDecoder> decoderList;
+    private GaltonChatDecoder decoder;
 
     //audio recording
     private final CircularArray historyBuffer;//this is NOT thread safe. wrap in 'synchronized' block when accessing
+    public static final Object historyBufferMutex = new Object();
     private int audioRecorderBufferSize;
     private AudioRecord audioRecord;
     private Thread recordingThread;
@@ -74,6 +75,10 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         channelAnalyzer.passCallback(channelListener);
 
         this.audioRecorderBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+        if (configs.get(0).get(0).getAnalysisWinLen(GaltonChat.SAMPLE_RATE) * 10 >= this.audioRecorderBufferSize) {
+            this.audioRecorderBufferSize = configs.get(0).get(0).getAnalysisWinLen(GaltonChat.SAMPLE_RATE) * 10;
+        }
+
         this.audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, audioRecorderBufferSize);
         this.isRecording = false;
         this.callback = callback;
@@ -82,15 +87,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         this.random = new Random(System.nanoTime());
 
         //decoding variables
-        this.decoderList = new ArrayList<>();
-        for (int j = 0; j < configs.size(); j++) {
-            for (int i = 0; i < configs.get(j).size(); i++) {
-                SoniTalkDecoder decoder = new SoniTalkDecoder(configs.get(j).get(i), j, i);
-                decoder.addMessageListener(this);
-                this.decoderList.add(decoder);
-            }
-        }
-
+        decoder = new GaltonChatDecoder(configs);
 
     }
 
@@ -185,16 +182,22 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
                 }
                 boolean run = true;//flag for exiting while loop
                 audioRecord.startRecording();
-                short[] temp = new short[audioRecorderBufferSize];
-                float[] current = new float[audioRecorderBufferSize];
+                int analysisWinStep = (int)Math.round((float) dynamicConfiguration.getConfigurations().get(0).get(0).getAnalysisWinLen(GaltonChat.SAMPLE_RATE)/ 8);
+
+                int neededBytes = analysisWinStep;
+                short[] temp = new short[neededBytes];
+                float[] current = new float[neededBytes];
                 while (run) {
                     //read in the data
-                    int bytesRead = audioRecord.read(temp, 0 , audioRecorderBufferSize);
-                    if (bytesRead == audioRecorderBufferSize) { //ensure we read enough bytes
-                        convertShortToFloat(temp, current, audioRecorderBufferSize);
-                        synchronized (GaltonChat.this.historyBuffer) {
+                    int bytesRead = audioRecord.read(temp, 0 , neededBytes);
+                    if (bytesRead == neededBytes) { //ensure we read enough bytes
+                        convertShortToFloat(temp, current, neededBytes);
+                        float[] bufferCpy;
+                        synchronized (historyBufferMutex) {
                             historyBuffer.add(current);
+
                         }
+                        decoder.analyzeHistoryBufferOtherThread(historyBuffer);
                     }
                     //check to see if the recording thread should be stopped
                     if (Thread.currentThread().isInterrupted()) {
@@ -205,18 +208,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
             }
         };
         recordingThread.start();
-        channelAnalyzer.startAnalysis();
-        for (int i = 0; i < decoderList.size(); i++) {
-            //todo make this not fucking dumb as hell
-            final int temp = i;
-            new Thread() {
-                @Override
-                public void run() {
-                    super.run();
-                    decoderList.get(temp).startDecoding();
-                }
-            }.start();
-        }
+        //channelAnalyzer.startAnalysis();
     }
 
     /**
@@ -229,9 +221,6 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
             delayedTaskHandler.removeCallbacks(resendRunnable);
         }
 
-        for (int i = 0; i < decoderList.size(); i++) {
-            decoderList.get(i).setLoopStopped(true);
-        }
         if (isRecording) {
             recordingThread.interrupt();//tell the thread to stop
         }

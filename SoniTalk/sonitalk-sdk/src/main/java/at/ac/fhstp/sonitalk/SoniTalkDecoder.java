@@ -164,7 +164,7 @@ public class SoniTalkDecoder {
     private int decoderState = STATE_INITIALIZED;
 
     private CRC crc;
-    private Thread decoderThread;
+
 
     /**
      * Constructor to be used with the GaltonChat SDK
@@ -215,20 +215,6 @@ public class SoniTalkDecoder {
         this.soniTalkContext = null;//we do not care
         bandpassWidth = DecoderUtils.getBandpassWidth(nFrequencies, frequencySpace);
         historyBufferSize = ((bitperiodInSamples*nBlocks+pauseperiodInSamples*(nBlocks-1)));
-        this.decoderThread = new Thread() {
-            @Override
-            public void run() {
-                super.run();
-                Log.e(GaltonChat.TAG, "starting decoder thread");
-                boolean run = true;
-                while(run) {
-                    analyzeHistoryBuffer();
-                    if (Thread.currentThread().isInterrupted()) {
-                        run = false;
-                    }
-                }
-            }
-        };
     }
 
     /*package private*/SoniTalkDecoder(SoniTalkContext soniTalkContext, int sampleRate, SoniTalkConfig config) {
@@ -315,6 +301,10 @@ public class SoniTalkDecoder {
         //Log.d(TAG, "Decoder default priority: " + String.valueOf(this.getPriority()));
         //this.setPriority(Process.THREAD_PRIORITY_BACKGROUND);
         //Log.d(TAG, "Decoder now in background priority: " + String.valueOf(this.getPriority()));
+    }
+
+    public int getHistoryBufferSize(int samplerate) {
+        return config.getHistoryBufferSize(samplerate);
     }
 
     /**
@@ -423,7 +413,7 @@ public class SoniTalkDecoder {
                             threadAnalyzeExecutor.execute(new Runnable() {
                                 @Override
                                 public void run() {
-                                    analyzeHistoryBuffer();
+                                    //analyzeHistoryBuffer();
                                 }
                             });
                         }
@@ -449,14 +439,7 @@ public class SoniTalkDecoder {
         //Log.d(TAG, "Message Decoder Thread stopped.");
     }
 
-    public void startDecoder() {
 
-        decoderThread.start();
-    }
-
-    public void stopDecoder() {
-        decoderThread.interrupt();
-    }
 
     /**
      * Converts an input array from short to [-1.0;1.0] float, result is put into the (pre-allocated) output array
@@ -529,8 +512,23 @@ public class SoniTalkDecoder {
 
     //ublic float[] getHistoryBuffer(){ synchronized (historyBuffer) {return historyBuffer.getArray();} }
 
+    public void analyzeHistoryBufferOtherThread(final float[] historyBuffer) {
+        synchronized (syncThreadAnalyzeExecutor) {
+            if (threadAnalyzeExecutor.isShutdown()) {
+                Log.d(TAG, "Thread was terminated already");
+            } else {
+                threadAnalyzeExecutor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        analyzeHistoryBuffer(historyBuffer);
+                    }
+                });
+            }
+        }
+    }
 
-    private void analyzeHistoryBuffer(){
+
+    private void analyzeHistoryBuffer(float[] analysisHistoryBuffer){
         long readTimestamp = System.nanoTime();
         /* Will try with saving the whole buffer directly
         float firstWindow[];
@@ -542,11 +540,6 @@ public class SoniTalkDecoder {
         }
         */
 
-        float analysisHistoryBuffer[];
-        synchronized (historyBuffer) {
-            //see if this works?
-            analysisHistoryBuffer = historyBuffer.getArray();
-        }
 
         float firstWindow[] = new float[analysisWinLen];
         float lastWindow[] = new float[analysisWinLen];
