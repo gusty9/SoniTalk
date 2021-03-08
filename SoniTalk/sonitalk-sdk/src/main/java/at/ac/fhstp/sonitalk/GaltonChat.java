@@ -71,7 +71,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         this.historyBuffer = new CircularArray(getLargestRequiredBufferSize(configs));/*perhaps make this smaller, as each decoder now has its own buffer?*/
         this.dynamicConfiguration = new DynamicConfiguration(historyBuffer, configs);
         dynamicConfiguration.passCallback(configurationChangeListener);
-        this.channelAnalyzer = new ChannelAnalyzer(dynamicConfiguration, historyBuffer);
+        this.channelAnalyzer = new ChannelAnalyzer(dynamicConfiguration);
         channelAnalyzer.passCallback(channelListener);
 
         this.audioRecorderBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);

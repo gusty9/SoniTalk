@@ -1,5 +1,8 @@
 package at.ac.fhstp.sonitalk;
 
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
 import android.util.Log;
 
 import at.ac.fhstp.sonitalk.utils.CircularArray;
@@ -13,22 +16,18 @@ import at.ac.fhstp.sonitalk.utils.CircularArray;
  */
 public abstract class AudioController {
 
-    private final CircularArray historyBuffer;
+    private AudioRecord audioRecord;
     private boolean isAnalyzing;
     private Thread analysisThread;
     private int analysisWindowLength;
+    private int historyBufferLength;
 
     /**
-     * create a new audio controller
-     * @param historyBuffer
-     *          microphone history buffer used as input
-     * @param analysisWindowLength
-     *          how much of the buffer should be analyzed at a time
      */
-    public AudioController(final CircularArray historyBuffer, final int analysisWindowLength) {
-        this.historyBuffer = historyBuffer;
+    public AudioController(int analysisWindowLength) {
         this.isAnalyzing = false;
         this.analysisWindowLength = analysisWindowLength;
+        this.historyBufferLength = historyBufferLength;
     }
 
     /**
@@ -40,12 +39,21 @@ public abstract class AudioController {
             public void run() {
                 super.run();
                 boolean run = true;
-                float[] analysisHistoryBuffer;
+
+                audioRecord = getInitializedAudioRecorder();
+                audioRecord.startRecording();
+                int readBytes = 0;
+                int neededBytes = analysisWindowLength;
+                short tempBuffer[] = new short[neededBytes];
+                float currentData[] = new float[neededBytes];
+
                 while (run) {
-                    synchronized (GaltonChat.historyBufferMutex) {//please ffs
-                        analysisHistoryBuffer = historyBuffer.getLastWindow(analysisWindowLength);
+
+                    readBytes = audioRecord.read(tempBuffer, 0, neededBytes);
+                    if (readBytes == neededBytes) {
+                        SoniTalkDecoder.convertShortToFloat(tempBuffer, currentData, readBytes);
+                        analyzeSamples(currentData);
                     }
-                    analyzeSamples(analysisHistoryBuffer);
                     if (Thread.currentThread().isInterrupted()) {
                         run = false;
                     }
@@ -54,6 +62,11 @@ public abstract class AudioController {
         };
         analysisThread.start();
         isAnalyzing = true;
+    }
+
+    private AudioRecord getInitializedAudioRecorder() {
+        int minBufferSize = analysisWindowLength * 2;
+        return new AudioRecord(MediaRecorder.AudioSource.MIC, GaltonChat.SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, minBufferSize);
     }
 
     /**

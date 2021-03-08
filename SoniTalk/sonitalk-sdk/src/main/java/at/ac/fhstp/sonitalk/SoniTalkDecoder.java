@@ -185,8 +185,8 @@ public class SoniTalkDecoder {
         this.frequencyOffsetForSpectrogram = 50;
         this.stepFactor = 8;
         this.bandPassFilterOrder = 8;
-        this.startFactor = 5.0;
-        this.endFactor = 5.0;
+        this.startFactor = 2.0;
+        this.endFactor = 2.0;
 
         winLenForSpectrogram = bitperiod;
         winLenForSpectrogramInSamples = Math.round(Fs * (float) winLenForSpectrogram/1000);
@@ -447,7 +447,7 @@ public class SoniTalkDecoder {
      * @param output Should be allocated beforehand
      * @param arrayLength
      */
-    private static void convertShortToFloat(short[] input, float[] output, int arrayLength) {
+    public static void convertShortToFloat(short[] input, float[] output, int arrayLength) {
         for (int i = 0; i < arrayLength; i++) {
             // Do we actually need float anywhere ? Switch to double ?
             output[i] = ((float) input[i]) / Short.MAX_VALUE;

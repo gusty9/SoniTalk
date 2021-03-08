@@ -34,10 +34,12 @@ public class ChannelAnalyzer extends AudioController {
     private DynamicConfiguration dynamicConfiguration;
     private int[] bucketCenterFreq;
     private long[] smoothingCounter;
+    private double[] varianceThresholds;
     private int bucketWidth;
     private int analysisWindowLength;
     private final int TIMER_FOR_SMOOTHING = 750; //has to be 'low' for .5 sec
-    private final double VARIANCE_THRESHOLD = 1E-5;
+    private final double INNER_VARIANCE_THRESHOLD = 2E-5;
+    private final double OUTTER_VARIANCE_THRESHOLD = 2E-5;
 
     private ChannelListener callback;
 
@@ -48,11 +50,9 @@ public class ChannelAnalyzer extends AudioController {
     /**
      * @param dynamicConfiguration
      *          reference to the dynamic configuration object
-     * @param historyBuffer
-     *          Reference to the microphone history buffer
      */
-    public ChannelAnalyzer(DynamicConfiguration dynamicConfiguration, CircularArray historyBuffer) {
-        super(historyBuffer, getAnalysisWindowLength(dynamicConfiguration.getConfigurations().get(0).get(0)));
+    public ChannelAnalyzer(DynamicConfiguration dynamicConfiguration) {
+        super(getAnalysisWindowLength(dynamicConfiguration.getConfigurations().get(0).get(0)));
         this.dynamicConfiguration = dynamicConfiguration;
         this.channelsAvailable = new ArrayList<>();
         for (int i = 0; i < this.dynamicConfiguration.getNumberOfConfigs(); i++) {
@@ -61,9 +61,10 @@ public class ChannelAnalyzer extends AudioController {
             this.channelsAvailable.add(available);
         }
         this.delayedTaskHandler = new Handler();
-        bucketCenterFreq = new int[]{18675, 20025, 21375};
+        bucketCenterFreq = new int[]{18575, 19955, 21335};;
         smoothingCounter = new long[]{0,0,0};
-        bucketWidth = 1000;//?
+        varianceThresholds = new double[]{1.5E-5, 1.5E-5, 1.5E-5};
+        bucketWidth = 1380;//?
         analysisWindowLength = Math.round((float)((100 * (float) GaltonChat.SAMPLE_RATE/1000)/4));
     }
 
@@ -117,7 +118,7 @@ public class ChannelAnalyzer extends AudioController {
 
 
 
-            if (variance > VARIANCE_THRESHOLD) {
+            if (variance > varianceThresholds[i]) {
                 bucketAvailable[i] = false;
                 smoothingCounter[i] = System.currentTimeMillis();
             } else if (System.currentTimeMillis() - smoothingCounter[i] < TIMER_FOR_SMOOTHING) {
@@ -127,92 +128,6 @@ public class ChannelAnalyzer extends AudioController {
         }
         updateAvailableChannels(bucketAvailable);
 
-
-//        for (int i = 0; i < channelsAvailable.size(); i++) {
-//            for (int j = 0; j < channelsAvailable.get(i).length; j++) {
-//                boolean available = false;
-//                synchronized (mutex) {
-//                    available = channelsAvailable.get(i)[j];
-//                   // Log.e(GaltonChat.TAG, "config " + i + " channel " + j + " " + available);
-//                }
-//                //don't run the analysis if the channel is occupied.
-//                if (available) {
-//                    SoniTalkConfig config = dynamicConfiguration.getConfigurations().get(i).get(j);
-//                    int analysisWindowLength = getAnalysisWindowLength(config);
-//                    //copy the samples from the buffer that were added most recently
-//                    float[] responseUpper = new float[analysisWindowLength];
-//                    float[] responseLower = new float[analysisWindowLength];
-//                    System.arraycopy(analysisHistoryBuffer, 0, responseUpper, 0, analysisWindowLength);
-//                    System.arraycopy(analysisHistoryBuffer, 0, responseLower, 0, analysisWindowLength);
-//
-//                    //create the filtered arrays
-//                    double[] responseUpperDouble = new double[analysisWindowLength * 2];
-//                    double[] responseLowerDouble = new double[analysisWindowLength * 2];
-//                    int bandpassWidth = DecoderUtils.getBandpassWidth(config.getnFrequencies(), config.getFrequencySpace());
-//                    int centerFrequencyLower = config.getFrequencyZero() + (bandpassWidth/2);
-//                    int centerFrequencyUpper = config.getFrequencyZero() + bandpassWidth + (bandpassWidth/2);
-//
-//                    //filter the arrays
-//                    //only filter 1/2 the bandpass width in order to decrease overlap
-//                    Butterworth butterworthUpper = new Butterworth();
-//                    butterworthUpper.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyUpper, bandpassWidth/2);
-//                    Butterworth butterworthLower = new Butterworth();
-//                    butterworthLower.bandPass(bandpassFilterOrder, GaltonChat.SAMPLE_RATE, centerFrequencyLower, bandpassWidth/2);
-//
-//                    for (int k = 0; k < responseLower.length; k++) {
-//                        responseUpperDouble[k] = butterworthUpper.filter(responseUpper[k]);
-//                        responseLowerDouble[k] = butterworthLower.filter(responseLower[k]);
-//                    }
-//                    DoubleFFT_1D fft = new DoubleFFT_1D(responseUpper.length);
-//                    fft.complexForward(responseUpperDouble);
-//                    fft.complexForward(responseLowerDouble);
-//
-//                    double sumAbsResponseUpper = 0.0;
-//                    double sumAbsResponseLower = 0.0;
-//
-//                    for (int k = 0; k < responseUpperDouble.length; k+=2) {
-//                        sumAbsResponseUpper += DecoderUtils.getComplexAbsolute(responseUpperDouble[k], responseUpperDouble[k+1]);
-//                        sumAbsResponseLower += DecoderUtils.getComplexAbsolute(responseLowerDouble[k], responseLowerDouble[k+1]);
-//                    }
-//
-//                    if (sumAbsResponseUpper > messageHeaderFactor * sumAbsResponseLower) {
-//                        //if this is true, a message block was found in the most recently added samples to the buffer
-//                        //set this channel to occupied and set a timer to reset the channel
-//                        List<boolean[]> cpy;
-//                        List<int[]> occupied = getOccupiedChannelsByIndex(i, j);
-//                        synchronized (mutex) {
-//                            for (int k = 0; k < occupied.size(); k++) {
-//                                int[] temp = occupied.get(k);
-//                                channelsAvailable.get(temp[0])[temp[1]] = false;
-//                            }
-//                            cpy = new ArrayList<>(channelsAvailable);
-//                        }
-//                        callback.channelsUpdated(cpy);
-//
-//                        for (int k = 0; k < occupied.size(); k++) {
-//                            int[] temp = occupied.get(k);
-//                            ChannelAvailableRunnable waitMessageDuration = new ChannelAvailableRunnable(channelsAvailable, temp[0], temp[1]);
-//                            //only wait for the current config if the message was found in said buffer
-//                            int waitTime = (int) Math.round((dynamicConfiguration.getMessageLength(i) + dynamicConfiguration.getMessageLength(dynamicConfiguration.getCurrentConfigIndex()))/2.0);
-//                            delayedTaskHandler.postDelayed(waitMessageDuration, waitTime);//set it equal to the length the message was found on
-//
-//                        }
-//                    }
-//                }
-//            }
-//
-//            //only run this check if it is the current config
-//            if (i == dynamicConfiguration.getCurrentConfigIndex() && i !=0) {
-//                boolean allChannelsFullCheck = true;//set to true because a channel is 'false' if it is occupied
-//                for (int j = 0; j < channelsAvailable.get(i).length; j++) {
-//                    allChannelsFullCheck = allChannelsFullCheck && channelsAvailable.get(i)[j];
-//                }
-//                if (!allChannelsFullCheck) {
-//                    dynamicConfiguration.updateDeescalationTimer();
-//                }
-//            }
-//
-//        }
     }
 
     private void updateAvailableChannels(boolean[] buckets) {
@@ -220,8 +135,8 @@ public class ChannelAnalyzer extends AudioController {
         synchronized (mutex) {
             channelsAvailable.get(0)[0] = buckets[0] && buckets[1] && buckets[2];
 
-            channelsAvailable.get(1)[0] = buckets[0] && buckets[1];
-            channelsAvailable.get(1)[1] = buckets[1] && buckets[2];
+            channelsAvailable.get(1)[0] = buckets[0];
+            channelsAvailable.get(1)[1] = buckets[2];
 
             channelsAvailable.get(2)[0] = buckets[0];
             channelsAvailable.get(2)[1] = buckets[1];
