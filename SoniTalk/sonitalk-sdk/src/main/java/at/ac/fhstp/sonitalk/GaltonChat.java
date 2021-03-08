@@ -87,7 +87,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         this.random = new Random(System.nanoTime());
 
         //decoding variables
-        decoder = new GaltonChatDecoder(configs);
+        decoder = new GaltonChatDecoder(configs, this);
 
     }
 
@@ -208,7 +208,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
             }
         };
         recordingThread.start();
-        //channelAnalyzer.startAnalysis();
+        channelAnalyzer.startAnalysis();
     }
 
     /**

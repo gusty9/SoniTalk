@@ -24,9 +24,10 @@ public class GaltonChatDecoder {
     private final int bandPassFilterOrder = 8;
     private final double startFactor = 2.0;
     private final double endFactor = 2.0;
+    private SoniTalkDecoder.MessageListener messageListener;
 
 
-    public GaltonChatDecoder(List<List<SoniTalkConfig>> configs) {
+    public GaltonChatDecoder(List<List<SoniTalkConfig>> configs, SoniTalkDecoder.MessageListener messageListener) {
         this.configList = new ArrayList<>();
         for (int i = 0; i < configs.size(); i++) {
             for (int j = 0; j < configs.get(i).size(); j++) {
@@ -38,6 +39,7 @@ public class GaltonChatDecoder {
         sync = new Object[configList.size()];
         Arrays.fill(isDecoding, false);
         Arrays.fill(sync, new Object());
+        this.messageListener = messageListener;
     }
 
     public void analyzeHistoryBufferOtherThread(final CircularArray historyBuffer) {
@@ -123,7 +125,7 @@ public class GaltonChatDecoder {
             }
 
             if(sumAbsEndResponseLower > endFactor * sumAbsEndResponseUpper) {
-               analyzeMessage(analysisHistoryBuffer, config);
+               analyzeMessage(analysisHistoryBuffer, config, index);
             }
         }
         synchronized (sync[index]) {
@@ -131,8 +133,8 @@ public class GaltonChatDecoder {
         }
     }
 
-    private void analyzeMessage(float[] analysisHistoryBuffer, SoniTalkConfig config) {
-        int winLenForSpectrogramInSamples = Math.round(GaltonChat.SAMPLE_RATE * (float) config.getBitperiod()/1000);
+    private void analyzeMessage(float[] analysisHistoryBuffer, SoniTalkConfig config, int index) {
+        int winLenForSpectrogramInSamples =(int) Math.round(GaltonChat.SAMPLE_RATE * config.getBitperiod()/1000.0);
         if (winLenForSpectrogramInSamples % 2 != 0) {
             winLenForSpectrogramInSamples ++; // Make sure winLenForSpectrogramInSamples is even
         }
@@ -186,7 +188,7 @@ public class GaltonChatDecoder {
         }
         int frequencyOffsetForSpectrogram = 50;
         int lowerCutoffFrequency = config.getFrequencyZero()-frequencyOffsetForSpectrogram;
-        int upperCutoffFrequency = config.getFrequencyZero() + ((config.getnFrequencies()-1) * config.getFrequencySpace()) +frequencyOffsetForSpectrogram;
+        int upperCutoffFrequency = config.getFrequencyZero() + ((config.getnFrequencies()-1) * config.getFrequencySpace()) + frequencyOffsetForSpectrogram;
         int lowerCutoffFrequencyIdx = (int)((float)lowerCutoffFrequency/(float)GaltonChat.SAMPLE_RATE*(float)winLenForSpectrogramInSamples);// + 1;
         int upperCutoffFrequencyIdx = (int)((float)upperCutoffFrequency/(float)GaltonChat.SAMPLE_RATE*(float)winLenForSpectrogramInSamples);// + 1;
         double[][] P = new double[nbWinLenForSpectrogram][upperCutoffFrequencyIdx-lowerCutoffFrequencyIdx + 1];
@@ -261,7 +263,16 @@ public class GaltonChatDecoder {
         SoniTalkMessage message = new SoniTalkMessage(receivedMessage);
         try {
             String s = message.getDecodedMessage();
-            Log.e("test", s);
+            int configIndex = 0;
+            int channelIndex = 0;
+            if (index == 1 || index == 2) {
+                configIndex = 1;
+                channelIndex = index - 1;
+            } else if (index > 2) {
+                configIndex = 2;
+                channelIndex = index - 3;
+            }
+            messageListener.onMessageReceived(message,configIndex, channelIndex);
         } catch (Exception e) {
            // Log.e("test", "rs error " + message.getHexString());
           //  Log.e("test", "" + configList.indexOf(config));
