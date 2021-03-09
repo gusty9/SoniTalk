@@ -30,7 +30,6 @@ public class ChannelAnalyzer extends AudioController {
 
     private List<boolean[]> channelsAvailable;
     private final Object mutex = new Object();
-    private Handler delayedTaskHandler;
     private DynamicConfiguration dynamicConfiguration;
     private int[] bucketCenterFreq;
     private long[] smoothingCounter;
@@ -38,8 +37,6 @@ public class ChannelAnalyzer extends AudioController {
     private int bucketWidth;
     private int analysisWindowLength;
     private final int TIMER_FOR_SMOOTHING = 750; //has to be 'low' for .5 sec
-    private final double INNER_VARIANCE_THRESHOLD = 2E-5;
-    private final double OUTTER_VARIANCE_THRESHOLD = 2E-5;
 
     private ChannelListener callback;
 
@@ -52,7 +49,8 @@ public class ChannelAnalyzer extends AudioController {
      *          reference to the dynamic configuration object
      */
     public ChannelAnalyzer(DynamicConfiguration dynamicConfiguration) {
-        super(getAnalysisWindowLength(dynamicConfiguration.getConfigurations().get(0).get(0)));
+        super();
+        analysisWindowLength = dynamicConfiguration.getConfigurations().get(0).get(0).getAnalysisWinLen(GaltonChat.SAMPLE_RATE) / 2;
         this.dynamicConfiguration = dynamicConfiguration;
         this.channelsAvailable = new ArrayList<>();
         for (int i = 0; i < this.dynamicConfiguration.getNumberOfConfigs(); i++) {
@@ -60,12 +58,10 @@ public class ChannelAnalyzer extends AudioController {
             Arrays.fill(available, true);
             this.channelsAvailable.add(available);
         }
-        this.delayedTaskHandler = new Handler();
         bucketCenterFreq = new int[]{18575, 19955, 21335};;
         smoothingCounter = new long[]{0,0,0};
-        varianceThresholds = new double[]{1.5E-5, 1.5E-5, 1.5E-5};
-        bucketWidth = 1380;//?
-        analysisWindowLength = Math.round((float)((100 * (float) GaltonChat.SAMPLE_RATE/1000)/4));
+        varianceThresholds = new double[]{5E-6, 5E-6, 5E-6};
+        bucketWidth = 1000;//?
     }
 
     /**
@@ -124,7 +120,7 @@ public class ChannelAnalyzer extends AudioController {
             } else if (System.currentTimeMillis() - smoothingCounter[i] < TIMER_FOR_SMOOTHING) {
                 bucketAvailable[i] = false;
             }
-            //Log.e(GaltonChat.TAG, "Bucket " + i + " var: " + variance);
+//            Log.e(GaltonChat.TAG, "Bucket " + i + " var: " + variance);
         }
         updateAvailableChannels(bucketAvailable);
 

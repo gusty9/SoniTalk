@@ -60,7 +60,7 @@ public class SoniTalkConfig {
 
     public int getAnalysisWinLen(int sampleRate) {
         int bitperiodInSamples = (int)Math.round(bitperiod * (float)sampleRate/1000);
-        return  (int)Math.round((float) bitperiodInSamples / 2 );
+        return  (int)Math.round((float) bitperiodInSamples );
     }
 
     public int getBandpassWidth() {
@@ -112,10 +112,10 @@ public class SoniTalkConfig {
      *          The size of the history buffer array
      */
     public int getHistoryBufferSize(int sampleRate) {
-        int bitperiodInSamples = (int) Math.round(bitperiod * (float)sampleRate/1000);
-        int pauseperiodInSamples = (int) Math.round(pauseperiod * (float)sampleRate/1000);
-        int  nBlocks = (int) Math.ceil(getnMessageBlocks() * 2) + 2;
-        return ((bitperiodInSamples*nBlocks+pauseperiodInSamples*(nBlocks-1)));
+        int bitperiodInSamples = (int) Math.round(bitperiod * sampleRate/1000.0);
+        int pauseperiodInSamples = (int) Math.round(pauseperiod * sampleRate/1000.0);
+        int  nBlocks = (int) Math.ceil(getnMessageBlocks() *2 ) + 2;
+        return bitperiodInSamples * nBlocks;
     }
 
     /**

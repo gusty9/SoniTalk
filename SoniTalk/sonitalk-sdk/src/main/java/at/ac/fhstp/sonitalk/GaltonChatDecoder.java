@@ -15,7 +15,7 @@ import edu.emory.mathcs.backport.java.util.Collections;
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D;
 import uk.me.berndporr.iirj.Butterworth;
 
-public class GaltonChatDecoder {
+public class GaltonChatDecoder extends AudioController {
     private List<SoniTalkConfig> configList;
     private ExecutorService threadAnalyzeExecutor;
     private final Object syncThreadAnalyzeExecutor = new Object();
@@ -25,9 +25,13 @@ public class GaltonChatDecoder {
     private final double startFactor = 2.0;
     private final double endFactor = 2.0;
     private SoniTalkDecoder.MessageListener messageListener;
+    private final CircularArray historyBuffer;
+    private int[] bytesLeftRead;
+
 
 
     public GaltonChatDecoder(List<List<SoniTalkConfig>> configs, SoniTalkDecoder.MessageListener messageListener) {
+        super();
         this.configList = new ArrayList<>();
         for (int i = 0; i < configs.size(); i++) {
             for (int j = 0; j < configs.get(i).size(); j++) {
@@ -40,43 +44,38 @@ public class GaltonChatDecoder {
         Arrays.fill(isDecoding, false);
         Arrays.fill(sync, new Object());
         this.messageListener = messageListener;
+        historyBuffer = new CircularArray(configs.get(configs.size()-1).get(configs.get(configs.size()-1).size()-1).getHistoryBufferSize(GaltonChat.SAMPLE_RATE));
+        bytesLeftRead = new int[configList.size()];
     }
 
-    public void analyzeHistoryBufferOtherThread(final CircularArray historyBuffer) {
-        for (int i = 0; i < configList.size(); i++) {
-            synchronized (sync[i]) {
-                if (!isDecoding[i]) {
-                    isDecoding[i] = true;
-                    final int index = i;
-                    final float[] buffer;
-                    synchronized (GaltonChat.historyBufferMutex) {
-                        buffer = historyBuffer.getLastWindow(configList.get(index).getHistoryBufferSize(GaltonChat.SAMPLE_RATE));
-                    }
+    @Override
+    void analyzeSamples(float[] analysisHistoryBuffer) {
+        historyBuffer.add(analysisHistoryBuffer);
 
-                    threadAnalyzeExecutor.execute(new Runnable() {
-                        @Override
-                        public void run() {
-                            checkForMessage(buffer, configList.get(index), index);
-                        }
-                    });
+        for (int i = 0; i < configList.size(); i++) {
+            if (bytesLeftRead[i] <= 0) {
+                int analysisWinLen = configList.get(i).getAnalysisWinLen(GaltonChat.SAMPLE_RATE);
+                float[] buffer = historyBuffer.getLastWindow(configList.get(i).getHistoryBufferSize(GaltonChat.SAMPLE_RATE));
+                float firstWindow[] = new float[analysisWinLen];
+                float lastWindow[] = new float[analysisWinLen];
+                System.arraycopy(buffer, 0, firstWindow, 0, analysisWinLen);
+                System.arraycopy(buffer, buffer.length - analysisWinLen, lastWindow, 0, analysisWinLen);
+                if (compareTopAndBottom(firstWindow, configList.get(i), true)) {
+                    if (compareTopAndBottom(lastWindow, configList.get(i), false)) {
+                        analyzeMessage(buffer, configList.get(i), i);
+                    }
                 }
+            } else {
+                bytesLeftRead[i] = bytesLeftRead[i] - analysisHistoryBuffer.length;
             }
         }
-
     }
 
-    public void checkForMessage(final float[] analysisHistoryBuffer, final SoniTalkConfig config, int index){
-        //Log.e("tesT", "check");
-        int analysisWinLen = config.getAnalysisWinLen(GaltonChat.SAMPLE_RATE);
-        float firstWindow[] = new float[analysisWinLen];
-        float lastWindow[] = new float[analysisWinLen];
-        System.arraycopy(analysisHistoryBuffer, 0, firstWindow, 0, analysisWinLen);
-        System.arraycopy(analysisHistoryBuffer, analysisHistoryBuffer.length - analysisWinLen, lastWindow, 0, analysisWinLen);
-
-        float[] startResponseUpper = firstWindow.clone();
-        float[] startResponseLower = firstWindow.clone();
-        double[] startResponseUpperDouble = new double[startResponseUpper.length * 2];
-        double[] startResponseLowerDouble = new double[startResponseLower.length * 2];
+    public boolean compareTopAndBottom(float[] analysisHistoryBuffer, SoniTalkConfig config, boolean firstWindow) {
+        float[] responseUpper = analysisHistoryBuffer.clone();
+        float[] responseLower = analysisHistoryBuffer.clone();
+        double[] startResponseUpperDouble = new double[responseUpper.length * 2];
+        double[] startResponseLowerDouble = new double[responseLower.length * 2];
         int centerFrequencyBandPassDown = config.getFrequencyZero() + (config.getBandpassWidth()/2);
         int centerFrequencyBandPassUp = config.getFrequencyZero() + config.getBandpassWidth() + (config.getBandpassWidth()/2);
 
@@ -84,11 +83,11 @@ public class GaltonChatDecoder {
         butterworthDown.bandPass(bandPassFilterOrder,GaltonChat.SAMPLE_RATE,centerFrequencyBandPassDown,config.getBandpassWidth());
         Butterworth butterworthUp = new Butterworth();
         butterworthUp.bandPass(bandPassFilterOrder,GaltonChat.SAMPLE_RATE,centerFrequencyBandPassUp,config.getBandpassWidth());
-        for(int i = 0; i<startResponseLower.length; i++) {
-            startResponseUpperDouble[i] = butterworthUp.filter(startResponseUpper[i]);
-            startResponseLowerDouble[i] = butterworthDown.filter(startResponseLower[i]);
+        for(int i = 0; i<responseLower.length; i++) {
+            startResponseUpperDouble[i] = butterworthUp.filter(responseUpper[i]);
+            startResponseLowerDouble[i] = butterworthDown.filter(responseLower[i]);
         }
-        DoubleFFT_1D fft = new DoubleFFT_1D(startResponseUpper.length);
+        DoubleFFT_1D fft = new DoubleFFT_1D(responseUpper.length);
         fft.complexForward(startResponseUpperDouble);
         fft.complexForward(startResponseLowerDouble);
 
@@ -99,41 +98,15 @@ public class GaltonChatDecoder {
             sumAbsStartResponseLower += DecoderUtils.getComplexAbsolute(startResponseLowerDouble[i], startResponseLowerDouble[i+1]);
         }
 
-        if(sumAbsStartResponseUpper > startFactor * sumAbsStartResponseLower){
-            float[] endResponseUpper = lastWindow.clone();
-            float[] endResponseLower = lastWindow.clone();
-            double[] endResponseUpperDouble = new double[endResponseUpper.length * 2];
-            double[] endResponseLowerDouble = new double[endResponseLower.length * 2];
-            Butterworth butterworthDownEnd = new Butterworth();
-            butterworthDownEnd.bandPass(bandPassFilterOrder,GaltonChat.SAMPLE_RATE,centerFrequencyBandPassDown,config.getBandpassWidth());
-            Butterworth butterworthUpEnd = new Butterworth();
-            butterworthUpEnd.bandPass(bandPassFilterOrder,GaltonChat.SAMPLE_RATE,centerFrequencyBandPassUp,config.getBandpassWidth());
-
-            for(int i = 0; i<endResponseLower.length; i++) {
-                endResponseUpperDouble[i] = butterworthUpEnd.filter(endResponseUpper[i]);
-                endResponseLowerDouble[i] = butterworthDownEnd.filter(endResponseLower[i]);
-            }
-
-            fft.complexForward(endResponseUpperDouble);
-            fft.complexForward(endResponseLowerDouble);
-
-            double sumAbsEndResponseUpper = 0;
-            double sumAbsEndResponseLower = 0;
-            for(int i = 0; i< endResponseUpperDouble.length; i+=2){
-                sumAbsEndResponseUpper += DecoderUtils.getComplexAbsolute(endResponseUpperDouble[i], endResponseUpperDouble[i+1]);
-                sumAbsEndResponseLower += DecoderUtils.getComplexAbsolute(endResponseLowerDouble[i], endResponseLowerDouble[i+1]);
-            }
-
-            if(sumAbsEndResponseLower > endFactor * sumAbsEndResponseUpper) {
-               analyzeMessage(analysisHistoryBuffer, config, index);
-            }
-        }
-        synchronized (sync[index]) {
-            isDecoding[index] = false;
+        if (firstWindow) {
+            return sumAbsStartResponseUpper > startFactor * sumAbsStartResponseLower;
+        } else {
+            return sumAbsStartResponseLower > endFactor * sumAbsStartResponseUpper;
         }
     }
 
     private void analyzeMessage(float[] analysisHistoryBuffer, SoniTalkConfig config, int index) {
+       // Log.e("test", "being analyzed?");
         int winLenForSpectrogramInSamples =(int) Math.round(GaltonChat.SAMPLE_RATE * config.getBitperiod()/1000.0);
         if (winLenForSpectrogramInSamples % 2 != 0) {
             winLenForSpectrogramInSamples ++; // Make sure winLenForSpectrogramInSamples is even
@@ -263,6 +236,8 @@ public class GaltonChatDecoder {
         SoniTalkMessage message = new SoniTalkMessage(receivedMessage);
         try {
             String s = message.getDecodedMessage();
+            bytesLeftRead[index] = configList.get(index).getHistoryBufferSize(GaltonChat.SAMPLE_RATE);
+           // Log.e("test", s);
             int configIndex = 0;
             int channelIndex = 0;
             if (index == 1 || index == 2) {
@@ -274,7 +249,7 @@ public class GaltonChatDecoder {
             }
             messageListener.onMessageReceived(message,configIndex, channelIndex);
         } catch (Exception e) {
-           // Log.e("test", "rs error " + message.getHexString());
+           // Log.e("test " + index, "rs error " + message.getHexString());
           //  Log.e("test", "" + configList.indexOf(config));
             //notifyMessageListenersOfError("Error decoding RS Error correction code. Raw received output was\n" + message.getHexString());
         }

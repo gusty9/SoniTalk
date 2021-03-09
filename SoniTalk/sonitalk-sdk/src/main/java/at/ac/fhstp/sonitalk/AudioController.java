@@ -19,15 +19,12 @@ public abstract class AudioController {
     private AudioRecord audioRecord;
     private boolean isAnalyzing;
     private Thread analysisThread;
-    private int analysisWindowLength;
-    private int historyBufferLength;
+    private int minBufferSize;
 
     /**
      */
-    public AudioController(int analysisWindowLength) {
+    public AudioController() {
         this.isAnalyzing = false;
-        this.analysisWindowLength = analysisWindowLength;
-        this.historyBufferLength = historyBufferLength;
     }
 
     /**
@@ -43,7 +40,7 @@ public abstract class AudioController {
                 audioRecord = getInitializedAudioRecorder();
                 audioRecord.startRecording();
                 int readBytes = 0;
-                int neededBytes = analysisWindowLength;
+                int neededBytes = minBufferSize;
                 short tempBuffer[] = new short[neededBytes];
                 float currentData[] = new float[neededBytes];
 
@@ -65,7 +62,8 @@ public abstract class AudioController {
     }
 
     private AudioRecord getInitializedAudioRecorder() {
-        int minBufferSize = analysisWindowLength * 2;
+        //int minBufferSize = analysisWindowLength;
+        minBufferSize = AudioRecord.getMinBufferSize(GaltonChat.SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
         return new AudioRecord(MediaRecorder.AudioSource.MIC, GaltonChat.SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, minBufferSize);
     }
 
@@ -93,7 +91,7 @@ public abstract class AudioController {
      *      the channel analyzer analysis window length
      */
     public static int getAnalysisWindowLength(SoniTalkConfig config) {
-        return Math.round((float)((config.getBitperiod() * (float) GaltonChat.SAMPLE_RATE/1000)/4));
+        return Math.round((float)((config.getBitperiod() * (float) GaltonChat.SAMPLE_RATE/1000)/2));
     }
 
     abstract void analyzeSamples(float[] analysisHistoryBuffer);

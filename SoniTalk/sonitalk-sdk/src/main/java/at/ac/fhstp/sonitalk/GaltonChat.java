@@ -171,43 +171,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      */
     public void startListeningThread() {
         isRecording = true;
-        recordingThread = new Thread() {
-            @Override
-            public void run() {
-                super.run();
-                try {
-                    android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                boolean run = true;//flag for exiting while loop
-                audioRecord.startRecording();
-                int analysisWinStep = (int)Math.round((float) dynamicConfiguration.getConfigurations().get(0).get(0).getAnalysisWinLen(GaltonChat.SAMPLE_RATE)/ 8);
-
-                int neededBytes = analysisWinStep;
-                short[] temp = new short[neededBytes];
-                float[] current = new float[neededBytes];
-                while (run) {
-                    //read in the data
-                    int bytesRead = audioRecord.read(temp, 0 , neededBytes);
-                    if (bytesRead == neededBytes) { //ensure we read enough bytes
-                        convertShortToFloat(temp, current, neededBytes);
-                        float[] bufferCpy;
-                        synchronized (historyBufferMutex) {
-                            historyBuffer.add(current);
-
-                        }
-                        decoder.analyzeHistoryBufferOtherThread(historyBuffer);
-                    }
-                    //check to see if the recording thread should be stopped
-                    if (Thread.currentThread().isInterrupted()) {
-                        run = false;
-                        audioRecord.stop();
-                    }
-                }
-            }
-        };
-        recordingThread.start();
+        decoder.startAnalysis();
         channelAnalyzer.startAnalysis();
     }
 
