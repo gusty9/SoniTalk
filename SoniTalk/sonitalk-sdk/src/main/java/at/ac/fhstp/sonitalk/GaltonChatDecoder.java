@@ -55,14 +55,21 @@ public class GaltonChatDecoder extends AudioController {
         for (int i = 0; i < configList.size(); i++) {
             if (bytesLeftRead[i] <= 0) {
                 int analysisWinLen = configList.get(i).getAnalysisWinLen(GaltonChat.SAMPLE_RATE);
-                float[] buffer = historyBuffer.getLastWindow(configList.get(i).getHistoryBufferSize(GaltonChat.SAMPLE_RATE));
+                final float[] buffer = historyBuffer.getLastWindow(configList.get(i).getHistoryBufferSize(GaltonChat.SAMPLE_RATE));
                 float firstWindow[] = new float[analysisWinLen];
                 float lastWindow[] = new float[analysisWinLen];
                 System.arraycopy(buffer, 0, firstWindow, 0, analysisWinLen);
                 System.arraycopy(buffer, buffer.length - analysisWinLen, lastWindow, 0, analysisWinLen);
                 if (compareTopAndBottom(firstWindow, configList.get(i), true, i)) {
                     if (compareTopAndBottom(lastWindow, configList.get(i), false, i)) {
-                        analyzeMessage(buffer, configList.get(i), i);
+                        final int index = i;
+                        new Thread() {
+                            @Override
+                            public void run() {
+                                super.run();
+                                analyzeMessage(buffer, configList.get(index), index);
+                            }
+                        }.start();
                     }
                 }
             } else {
@@ -101,7 +108,7 @@ public class GaltonChatDecoder extends AudioController {
         if (firstWindow) {
             return sumAbsStartResponseUpper > startFactor * sumAbsStartResponseLower;
         } else {
-            Log.e("test " + index, sumAbsStartResponseLower + ", " + sumAbsStartResponseUpper);
+//            Log.e("test " + index, sumAbsStartResponseLower + ", " + sumAbsStartResponseUpper);
             return sumAbsStartResponseLower > endFactor * sumAbsStartResponseUpper;
         }
     }
@@ -250,7 +257,7 @@ public class GaltonChatDecoder extends AudioController {
             }
             messageListener.onMessageReceived(message,configIndex, channelIndex);
         } catch (Exception e) {
-           // Log.e("test " + index, "rs error " + message.getHexString());
+            Log.e("test " + index, "rs error " + message.getHexString());
           //  Log.e("test", "" + configList.indexOf(config));
             //notifyMessageListenersOfError("Error decoding RS Error correction code. Raw received output was\n" + message.getHexString());
         }
