@@ -60,8 +60,8 @@ public class GaltonChatDecoder extends AudioController {
                 float lastWindow[] = new float[analysisWinLen];
                 System.arraycopy(buffer, 0, firstWindow, 0, analysisWinLen);
                 System.arraycopy(buffer, buffer.length - analysisWinLen, lastWindow, 0, analysisWinLen);
-                if (compareTopAndBottom(firstWindow, configList.get(i), true)) {
-                    if (compareTopAndBottom(lastWindow, configList.get(i), false)) {
+                if (compareTopAndBottom(firstWindow, configList.get(i), true, i)) {
+                    if (compareTopAndBottom(lastWindow, configList.get(i), false, i)) {
                         analyzeMessage(buffer, configList.get(i), i);
                     }
                 }
@@ -71,7 +71,7 @@ public class GaltonChatDecoder extends AudioController {
         }
     }
 
-    public boolean compareTopAndBottom(float[] analysisHistoryBuffer, SoniTalkConfig config, boolean firstWindow) {
+    public boolean compareTopAndBottom(float[] analysisHistoryBuffer, SoniTalkConfig config, boolean firstWindow, int index) {
         float[] responseUpper = analysisHistoryBuffer.clone();
         float[] responseLower = analysisHistoryBuffer.clone();
         double[] startResponseUpperDouble = new double[responseUpper.length * 2];
@@ -101,6 +101,7 @@ public class GaltonChatDecoder extends AudioController {
         if (firstWindow) {
             return sumAbsStartResponseUpper > startFactor * sumAbsStartResponseLower;
         } else {
+            Log.e("test " + index, sumAbsStartResponseLower + ", " + sumAbsStartResponseUpper);
             return sumAbsStartResponseLower > endFactor * sumAbsStartResponseUpper;
         }
     }

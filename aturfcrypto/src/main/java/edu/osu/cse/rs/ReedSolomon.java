@@ -7,6 +7,8 @@ package edu.osu.cse.rs;
  * https://www.nayuki.io/page/reed-solomon-error-correcting-code-decoder
  */
 
+import android.util.Log;
+
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Objects;
@@ -216,7 +218,9 @@ public final class ReedSolomon<E> {
 			E[] newSyndromes = calculateSyndromes(newCodeword);
 			if (!areAllZero(newSyndromes))
 				throw new AssertionError();
+			Log.e("test", "RS code correction");
 			codeword = newCodeword;
+			return null;//return null to see if this fixes the 'stray id' problem
 		}
 		
 		// At this point, all syndromes are zero.

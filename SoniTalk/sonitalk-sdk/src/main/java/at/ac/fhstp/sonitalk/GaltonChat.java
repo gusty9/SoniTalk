@@ -48,7 +48,6 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     public static final Object historyBufferMutex = new Object();
     private int audioRecorderBufferSize;
     private AudioRecord audioRecord;
-    private Thread recordingThread;
     private boolean isRecording;
     private ChannelAnalyzer channelAnalyzer;
     private DynamicConfiguration dynamicConfiguration;
@@ -118,7 +117,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
             Log.e(TAG, "all channels are occupied, attempting to resend message");
             resendRunnable = new AttemptResendRunnable(message);
             int messageDur = dynamicConfiguration.getCurrentMessageLength();
-            delayedTaskHandler.postDelayed(resendRunnable, generateRandom(messageDur, (int) Math.round(2.5*messageDur)));//maybe not over 2
+            delayedTaskHandler.postDelayed(resendRunnable, generateRandom(messageDur, (int) Math.round(2*messageDur)));//maybe not over 2
             attemptResendCounter++;
         }
     }
@@ -153,7 +152,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     @Override
     public void onMessageReceived(SoniTalkMessage receivedMessage, int configIndex, int channelIndex) {
         Log.e(TAG, receivedMessage.getDecodedMessage() + " config " + configIndex + " channel " + channelIndex);
-        //dynamicConfiguration.onMessageReceived(configIndex);
+        dynamicConfiguration.onMessageReceived(configIndex);
         callback.onMessageReceived(receivedMessage.getDecodedMessage(), configIndex, channelIndex);
         //todo sometimes messages that do not exist are being decoded. Refine that more or add extra error checking?
     }
@@ -181,14 +180,12 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     public void stopListeningThread() {
 
         channelAnalyzer.stopAnalysis();//stop the channel analyzer
+        decoder.stopAnalysis();
         if (resendRunnable != null) {
             delayedTaskHandler.removeCallbacks(resendRunnable);
         }
 
-        if (isRecording) {
-            recordingThread.interrupt();//tell the thread to stop
-        }
-        isRecording = false;
+
     }
 
     //method used for testing - force a send on what I want to see if the system is working appropriately

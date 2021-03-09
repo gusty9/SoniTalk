@@ -258,6 +258,11 @@ public class GaltonTestActivity extends AppCompatActivity implements GaltonChat.
         });
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        galton.stopListeningThread();
+    }
 
     @Override
     public void onMessageSent(final String message, int configIndex, int channelIndex) {

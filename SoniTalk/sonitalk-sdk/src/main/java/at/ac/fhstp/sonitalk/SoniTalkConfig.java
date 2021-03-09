@@ -125,7 +125,8 @@ public class SoniTalkConfig {
      */
     public int getMessageDurationMS() {
         //todo figure out why its * 2 and not what i think it is
-        return (int) (((getnMessageBlocks() + 2) * getBitperiod()) * (2));
+        int  nBlocks = (int) Math.ceil(getnMessageBlocks() *2 ) + 2;
+        return (int) ((nBlocks* getBitperiod()));
     }
 
 }

@@ -92,7 +92,8 @@ public class DynamicConfiguration {
     }
 
     public void setConfigurationIndex(int index) {
-        if (index != currentConfigIndex) {
+        if (index > currentConfigIndex) {
+            //only use this for 'escalation' or else a device will escalate, and then deescalate when another device didnt make that decision
             currentConfigIndex = index;
             Log.e(GaltonChat.TAG, "setting configuration to index " + index);
             if (callback != null) {

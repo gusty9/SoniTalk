@@ -52,6 +52,7 @@ public abstract class AudioController {
                         analyzeSamples(currentData);
                     }
                     if (Thread.currentThread().isInterrupted()) {
+                        audioRecord.stop();
                         run = false;
                     }
                 }
