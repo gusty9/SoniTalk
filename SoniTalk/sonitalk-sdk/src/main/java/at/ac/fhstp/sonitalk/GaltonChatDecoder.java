@@ -18,7 +18,6 @@ import uk.me.berndporr.iirj.Butterworth;
 public class GaltonChatDecoder extends AudioController {
     private List<SoniTalkConfig> configList;
     private ExecutorService threadAnalyzeExecutor;
-    private final Object syncThreadAnalyzeExecutor = new Object();
     private boolean[] isDecoding;
     private Object[] sync;
     private final int bandPassFilterOrder = 8;
@@ -38,7 +37,7 @@ public class GaltonChatDecoder extends AudioController {
                 configList.add(configs.get(i).get(j));
             }
         }
-        threadAnalyzeExecutor =  Executors.newFixedThreadPool(configList.size());
+        threadAnalyzeExecutor =  Executors.newSingleThreadExecutor();
         isDecoding = new boolean[configList.size()];
         sync = new Object[configList.size()];
         Arrays.fill(isDecoding, false);
@@ -63,13 +62,12 @@ public class GaltonChatDecoder extends AudioController {
                 if (compareTopAndBottom(firstWindow, configList.get(i), true, i)) {
                     if (compareTopAndBottom(lastWindow, configList.get(i), false, i)) {
                         final int index = i;
-                        new Thread() {
+                        threadAnalyzeExecutor.execute(new Runnable() {
                             @Override
                             public void run() {
-                                super.run();
                                 analyzeMessage(buffer, configList.get(index), index);
                             }
-                        }.start();
+                        });
                     }
                 }
             } else {

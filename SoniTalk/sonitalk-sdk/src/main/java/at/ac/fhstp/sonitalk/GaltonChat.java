@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Random;
 
 import at.ac.fhstp.sonitalk.utils.CircularArray;
+import at.ac.fhstp.sonitalk.utils.DecoderUtils;
 import edu.emory.mathcs.backport.java.util.Arrays;
 import marytts.util.math.ComplexArray;
 import marytts.util.math.Hilbert;
@@ -203,7 +204,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      */
     private int getLargestRequiredBufferSize(List<List<SoniTalkConfig>> configList) {
         //by convention the largest buffer size should simply be the last one in the list (slowest channel)
-        return configList.get(configList.size() -1).get(configList.get(configList.size()-1).size() -1 ).getHistoryBufferSize(SAMPLE_RATE);
+        return DecoderUtils.nextPowerOfTwo(configList.get(configList.size() -1).get(configList.get(configList.size()-1).size() -1 ).getHistoryBufferSize(SAMPLE_RATE));
     }
 
     /**
