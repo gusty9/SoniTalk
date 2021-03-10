@@ -43,6 +43,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
 
     //configuration variables
     private GaltonChatDecoder decoder;
+    private AudioController audioController;
 
     //audio recording
     private final CircularArray historyBuffer;//this is NOT thread safe. wrap in 'synchronized' block when accessing
@@ -88,6 +89,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
 
         //decoding variables
         decoder = new GaltonChatDecoder(configs, this);
+        audioController = new AudioController(decoder, channelAnalyzer);
 
     }
 
@@ -171,8 +173,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      */
     public void startListeningThread() {
         isRecording = true;
-        decoder.startAnalysis();
-        channelAnalyzer.startAnalysis();
+        audioController.startAnalysis();
     }
 
     /**
@@ -180,8 +181,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
      */
     public void stopListeningThread() {
 
-        channelAnalyzer.stopAnalysis();//stop the channel analyzer
-        decoder.stopAnalysis();
+        audioController.stopAnalysis();
         if (resendRunnable != null) {
             delayedTaskHandler.removeCallbacks(resendRunnable);
         }

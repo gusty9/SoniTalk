@@ -5,6 +5,10 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.util.Log;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+
 import at.ac.fhstp.sonitalk.utils.CircularArray;
 
 /**
@@ -14,17 +18,23 @@ import at.ac.fhstp.sonitalk.utils.CircularArray;
  * the subclass
  * @author Erik Gustafson
  */
-public abstract class AudioController {
+public class AudioController {
 
     private AudioRecord audioRecord;
     private boolean isAnalyzing;
     private Thread analysisThread;
     private int minBufferSize;
+    private GaltonChatDecoder decoder;
+    private ChannelAnalyzer channelAnalyzer;
+    private ExecutorService executor;
 
     /**
      */
-    public AudioController() {
+    public AudioController(GaltonChatDecoder decoder, ChannelAnalyzer channelAnalyzer) {
         this.isAnalyzing = false;
+        this.decoder = decoder;
+        this.channelAnalyzer = channelAnalyzer;
+        executor = Executors.newSingleThreadExecutor();
     }
 
     /**
@@ -42,14 +52,20 @@ public abstract class AudioController {
                 int readBytes = 0;
                 int neededBytes = minBufferSize;
                 short tempBuffer[] = new short[neededBytes];
-                float currentData[] = new float[neededBytes];
+                final float currentData[] = new float[neededBytes];
 
                 while (run) {
 
                     readBytes = audioRecord.read(tempBuffer, 0, neededBytes);
                     if (readBytes == neededBytes) {
                         SoniTalkDecoder.convertShortToFloat(tempBuffer, currentData, readBytes);
-                        analyzeSamples(currentData);
+                        executor.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                channelAnalyzer.analyzeSamples(currentData);
+                            }
+                        });
+                        decoder.analyzeSamples(currentData);
                     }
                     if (Thread.currentThread().isInterrupted()) {
                         audioRecord.stop();
@@ -95,5 +111,4 @@ public abstract class AudioController {
         return Math.round((float)((config.getBitperiod() * (float) GaltonChat.SAMPLE_RATE/1000)/2));
     }
 
-    abstract void analyzeSamples(float[] analysisHistoryBuffer);
 }

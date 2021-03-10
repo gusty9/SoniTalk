@@ -15,7 +15,7 @@ import edu.emory.mathcs.backport.java.util.Collections;
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D;
 import uk.me.berndporr.iirj.Butterworth;
 
-public class GaltonChatDecoder extends AudioController {
+public class GaltonChatDecoder {
     private List<SoniTalkConfig> configList;
     private ExecutorService threadAnalyzeExecutor;
     private boolean[] isDecoding;
@@ -30,7 +30,6 @@ public class GaltonChatDecoder extends AudioController {
 
 
     public GaltonChatDecoder(List<List<SoniTalkConfig>> configs, SoniTalkDecoder.MessageListener messageListener) {
-        super();
         this.configList = new ArrayList<>();
         for (int i = 0; i < configs.size(); i++) {
             for (int j = 0; j < configs.get(i).size(); j++) {
@@ -47,8 +46,7 @@ public class GaltonChatDecoder extends AudioController {
         bytesLeftRead = new int[configList.size()];
     }
 
-    @Override
-    void analyzeSamples(float[] analysisHistoryBuffer) {
+    public void analyzeSamples(float[] analysisHistoryBuffer) {
         historyBuffer.add(analysisHistoryBuffer);
 
         for (int i = 0; i < configList.size(); i++) {

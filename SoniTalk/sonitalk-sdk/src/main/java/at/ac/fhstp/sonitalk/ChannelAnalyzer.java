@@ -24,7 +24,7 @@ import uk.me.berndporr.iirj.Butterworth;
  * and determining which channels are available
  * @author Erik Gustafson
  */
-public class ChannelAnalyzer extends AudioController {
+public class ChannelAnalyzer {
     private final int bandpassFilterOrder = 8;//todo figure out what this does
     private final int messageHeaderFactor = 6;//todo test this a little bit more
 
@@ -49,7 +49,6 @@ public class ChannelAnalyzer extends AudioController {
      *          reference to the dynamic configuration object
      */
     public ChannelAnalyzer(DynamicConfiguration dynamicConfiguration) {
-        super();
         analysisWindowLength = dynamicConfiguration.getConfigurations().get(0).get(0).getAnalysisWinLen(GaltonChat.SAMPLE_RATE) / 2;
         this.dynamicConfiguration = dynamicConfiguration;
         this.channelsAvailable = new ArrayList<>();
@@ -70,8 +69,7 @@ public class ChannelAnalyzer extends AudioController {
      *          fresh set of samples pulled from the front of the circular
      *          array microphone history buffer
      */
-    @Override
-    void analyzeSamples(float[] analysisHistoryBuffer) {
+    public void analyzeSamples(float[] analysisHistoryBuffer) {
         boolean[] bucketAvailable = new boolean[]{true, true, true};
         for (int i = 0; i < bucketCenterFreq.length; i++) {
             float[] response = new float[analysisWindowLength];
