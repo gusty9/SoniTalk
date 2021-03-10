@@ -60,7 +60,7 @@ public class SoniTalkConfig {
 
     public int getAnalysisWinLen(int sampleRate) {
         int bitperiodInSamples = (int)Math.round(bitperiod * (float)sampleRate/1000);
-        return  (int)Math.round((float) bitperiodInSamples );
+        return  (int)Math.ceil((float) bitperiodInSamples / 3.0);
     }
 
     public int getBandpassWidth() {

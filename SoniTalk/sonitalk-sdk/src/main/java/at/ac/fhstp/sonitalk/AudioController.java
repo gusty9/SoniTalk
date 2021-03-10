@@ -10,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import at.ac.fhstp.sonitalk.utils.CircularArray;
+import at.ac.fhstp.sonitalk.utils.DecoderUtils;
 
 /**
  * Abstract class for creating objects that have to react
@@ -50,7 +51,7 @@ public class AudioController {
                 audioRecord = getInitializedAudioRecorder();
                 audioRecord.startRecording();
                 int readBytes = 0;
-                int neededBytes = minBufferSize;
+                int neededBytes = decoder.getAnalysisWinLen();
                 short tempBuffer[] = new short[neededBytes];
                 final float currentData[] = new float[neededBytes];
 
@@ -80,7 +81,12 @@ public class AudioController {
 
     private AudioRecord getInitializedAudioRecorder() {
         //int minBufferSize = analysisWindowLength;
+        int doubleAnalysisWin = 2 * decoder.getAnalysisWinLen();
+        int buffSize = DecoderUtils.nextPowerOfTwo(doubleAnalysisWin);
         minBufferSize = AudioRecord.getMinBufferSize(GaltonChat.SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+        if (buffSize > minBufferSize) {
+            minBufferSize = buffSize;
+        }
         return new AudioRecord(MediaRecorder.AudioSource.MIC, GaltonChat.SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, minBufferSize);
     }
 

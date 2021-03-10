@@ -36,6 +36,7 @@ public class ChannelAnalyzer {
     private double[] varianceThresholds;
     private int bucketWidth;
     private int analysisWindowLength;
+    private CircularArray historyBuffer;
     private final int TIMER_FOR_SMOOTHING = 750; //has to be 'low' for .5 sec
 
     private ChannelListener callback;
@@ -59,18 +60,21 @@ public class ChannelAnalyzer {
         }
         bucketCenterFreq = new int[]{18575, 19955, 21335};;
         smoothingCounter = new long[]{0,0,0};
-        varianceThresholds = new double[]{5E-6, 5E-6, 5E-6};
+        varianceThresholds = new double[]{2.2E-5, 2.2E-5, 2.2E-5};
         bucketWidth = 1000;//?
+        historyBuffer = new CircularArray(dynamicConfiguration.getConfigurations().get(0).get(0).getAnalysisWinLen(GaltonChat.SAMPLE_RATE) *6);
     }
 
     /**
      * analyze new samples pulled from the history buffer
-     * @param analysisHistoryBuffer
+     * @param samples
      *          fresh set of samples pulled from the front of the circular
      *          array microphone history buffer
      */
-    public void analyzeSamples(float[] analysisHistoryBuffer) {
+    public void analyzeSamples(float[] samples) {
+        historyBuffer.add(samples);
         boolean[] bucketAvailable = new boolean[]{true, true, true};
+        float[] analysisHistoryBuffer = historyBuffer.getArray();
         for (int i = 0; i < bucketCenterFreq.length; i++) {
             float[] response = new float[analysisWindowLength];
             System.arraycopy(analysisHistoryBuffer, 0, response, 0, analysisWindowLength);

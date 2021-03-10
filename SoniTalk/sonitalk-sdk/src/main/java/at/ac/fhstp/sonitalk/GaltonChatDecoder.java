@@ -22,10 +22,11 @@ public class GaltonChatDecoder {
     private Object[] sync;
     private final int bandPassFilterOrder = 8;
     private final double startFactor = 2.0;
-    private final double endFactor = 2.0;
+    private final double endFactor = 4.0;
     private SoniTalkDecoder.MessageListener messageListener;
     private final CircularArray historyBuffer;
     private int[] bytesLeftRead;
+    private int bytesRead;
 
 
 
@@ -50,27 +51,25 @@ public class GaltonChatDecoder {
         historyBuffer.add(analysisHistoryBuffer);
 
         for (int i = 0; i < configList.size(); i++) {
-            if (bytesLeftRead[i] <= 0) {
-                int analysisWinLen = configList.get(i).getAnalysisWinLen(GaltonChat.SAMPLE_RATE);
-                final float[] buffer = historyBuffer.getLastWindow(configList.get(i).getHistoryBufferSize(GaltonChat.SAMPLE_RATE));
-                float firstWindow[] = new float[analysisWinLen];
-                float lastWindow[] = new float[analysisWinLen];
-                System.arraycopy(buffer, 0, firstWindow, 0, analysisWinLen);
-                System.arraycopy(buffer, buffer.length - analysisWinLen, lastWindow, 0, analysisWinLen);
-                if (compareTopAndBottom(firstWindow, configList.get(i), true, i)) {
-                    if (compareTopAndBottom(lastWindow, configList.get(i), false, i)) {
-                        final int index = i;
-                        threadAnalyzeExecutor.execute(new Runnable() {
-                            @Override
-                            public void run() {
-                                analyzeMessage(buffer, configList.get(index), index);
-                            }
-                        });
-                    }
+
+            int analysisWinLen = configList.get(i).getAnalysisWinLen(GaltonChat.SAMPLE_RATE);
+            final float[] buffer = historyBuffer.getLastWindow(configList.get(i).getHistoryBufferSize(GaltonChat.SAMPLE_RATE));
+            float firstWindow[] = new float[analysisWinLen];
+            float lastWindow[] = new float[analysisWinLen];
+            System.arraycopy(buffer, 0, firstWindow, 0, analysisWinLen);
+            System.arraycopy(buffer, buffer.length - analysisWinLen, lastWindow, 0, analysisWinLen);
+            if (compareTopAndBottom(firstWindow, configList.get(i), true, i)) {
+                if (compareTopAndBottom(lastWindow, configList.get(i), false, i)) {
+                    final int index = i;
+                    threadAnalyzeExecutor.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            analyzeMessage(buffer, configList.get(index), index);
+                        }
+                    });
                 }
-            } else {
-                bytesLeftRead[i] = bytesLeftRead[i] - analysisHistoryBuffer.length;
             }
+
         }
     }
 
@@ -312,5 +311,9 @@ public class GaltonChatDecoder {
         //Log.d("findClosest", "arrayIndex: " + arrayIndex);
         //arrayIndex = frequencyIndex;
         return arrayIndex;
+    }
+
+    public int getAnalysisWinLen() {
+        return configList.get(0).getAnalysisWinLen(GaltonChat.SAMPLE_RATE);
     }
 }
