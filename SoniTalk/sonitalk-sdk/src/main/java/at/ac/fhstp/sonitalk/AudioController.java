@@ -5,6 +5,8 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.util.Log;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -25,17 +27,19 @@ public class AudioController {
     private boolean isAnalyzing;
     private Thread analysisThread;
     private int minBufferSize;
-    private GaltonChatDecoder decoder;
+//    private GaltonChatDecoder decoder;
+    private ArrayList<SoniTalkDecoder> decoders;
     private ChannelAnalyzer channelAnalyzer;
     private ExecutorService executor;
 
     /**
      */
-    public AudioController(GaltonChatDecoder decoder, ChannelAnalyzer channelAnalyzer) {
+    public AudioController(List<SoniTalkDecoder> decoders, ChannelAnalyzer channelAnalyzer) {
         this.isAnalyzing = false;
-        this.decoder = decoder;
+//        this.decoder = decoder;
         this.channelAnalyzer = channelAnalyzer;
         executor = Executors.newSingleThreadExecutor();
+        this.decoders = new ArrayList<>(decoders);
     }
 
     /**
@@ -51,7 +55,7 @@ public class AudioController {
                 audioRecord = getInitializedAudioRecorder();
                 audioRecord.startRecording();
                 int readBytes = 0;
-                int neededBytes = decoder.getAnalysisWinLen();
+                int neededBytes = decoders.get(0).getAnalysisWinStep();
                 short tempBuffer[] = new short[neededBytes];
                 final float currentData[] = new float[neededBytes];
 
@@ -73,7 +77,9 @@ public class AudioController {
                                 channelAnalyzer.analyzeSamples(currentData);
                             }
                         });
-                        decoder.analyzeSamples(currentData);
+                        for (SoniTalkDecoder decoder : decoders) {
+                            decoder.passSamples(currentData);
+                        }
                     }
                     if (Thread.currentThread().isInterrupted()) {
                         audioRecord.stop();
@@ -89,8 +95,8 @@ public class AudioController {
 
     private AudioRecord getInitializedAudioRecorder() {
         //int minBufferSize = analysisWindowLength;
-        int doubleAnalysisWin = 2 * decoder.getAnalysisWinLen();
-        int buffSize = DecoderUtils.nextPowerOfTwo(doubleAnalysisWin);
+//        int doubleAnalysisWin = 2 * decoder.getAnalysisWinLen();
+        int buffSize = decoders.get(0).getAnalysisWinLen() * 10;
         minBufferSize = AudioRecord.getMinBufferSize(GaltonChat.SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
         if (buffSize > minBufferSize) {
             minBufferSize = buffSize;

@@ -42,7 +42,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     private final int ATTEMPT_RESEND_THRESHOLD = 1;
 
     //configuration variables
-    private GaltonChatDecoder decoder;
+//    private GaltonChatDecoder decoder;
     private AudioController audioController;
 
     //audio recording
@@ -88,8 +88,16 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         this.random = new Random(System.nanoTime());
 
         //decoding variables
-        decoder = new GaltonChatDecoder(dynamicConfiguration, this);
-        audioController = new AudioController(decoder, channelAnalyzer);
+//        decoder = new GaltonChatDecoder(dynamicConfiguration, this);
+        List<SoniTalkDecoder> decoders = new ArrayList<>();
+        for (int i = 0; i < configs.size(); i++) {
+            for (int j = 0; j < configs.get(i).size(); j++) {
+                SoniTalkDecoder decoder = new SoniTalkDecoder(configs.get(i).get(j), i, j);
+                decoder.addMessageListener(this);
+                decoders.add(decoder);
+            }
+        }
+        audioController = new AudioController(decoders, channelAnalyzer);
 
     }
 

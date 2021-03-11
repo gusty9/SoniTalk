@@ -164,6 +164,7 @@ public class SoniTalkDecoder {
     private int decoderState = STATE_INITIALIZED;
 
     private CRC crc;
+    private int counter = 1;
 
 
     /**
@@ -439,8 +440,52 @@ public class SoniTalkDecoder {
         //Log.d(TAG, "Message Decoder Thread stopped.");
     }
 
+    public void passSamples(float[] samples) {
+        int readBytes = 0;
+        int neededBytes = analysisWinStep;
+        readBytes = samples.length;
+
+        if (readBytes != neededBytes) {
+            Log.e(TAG, "ERROR " + readBytes);
+            Log.e(TAG, "NEEDED " + neededBytes);
+        } else {
+            //Log.e(TAG, "ReadBytes " + readBytes);
+//            convertShortToFloat(tempBuffer, currentData, readBytes);
+
+            synchronized (historyBuffer) {
+                historyBuffer.add(samples);
+            }
+            //if (counter < (historyBuffer.size() / neededBytes)) { //Note: Differs from Octave version
+            if (counter < (nBlocks*nAnalysisWindowsPerBit-nAnalysisWindowsPerPause)) { // Looks more like Octave version
+                //Log.e("HistoryBuffer", "I am not full");
+                //Log.d("HisoryBuffercounter", "Counter " + counter);
+                //Log.d("HisoryBuffersize", "Size " + historyBuffer.size());
+            } else { // At this point the buffer is very close to be full
+                synchronized (syncThreadAnalyzeExecutor) {
+                    if (threadAnalyzeExecutor.isShutdown()) {
+                        Log.d(TAG, "Thread was terminated already");
+                    } else {
+                        threadAnalyzeExecutor.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                analyzeHistoryBuffer();
+                            }
+                        });
+                    }
+                }
+            }
+            counter++; // Octave version put it at the end
+        }
+    }
 
 
+    public int getAnalysisWinLen() {
+        return analysisWinLen;
+    }
+
+    public int getAnalysisWinStep() {
+        return analysisWinStep;
+    }
     /**
      * Converts an input array from short to [-1.0;1.0] float, result is put into the (pre-allocated) output array
      * @param input
@@ -520,7 +565,7 @@ public class SoniTalkDecoder {
                 threadAnalyzeExecutor.execute(new Runnable() {
                     @Override
                     public void run() {
-                        analyzeHistoryBuffer(historyBuffer);
+//                        analyzeHistoryBuffer(historyBuffer);
                     }
                 });
             }
@@ -528,7 +573,7 @@ public class SoniTalkDecoder {
     }
 
 
-    private void analyzeHistoryBuffer(float[] analysisHistoryBuffer){
+    private void analyzeHistoryBuffer(){
         long readTimestamp = System.nanoTime();
         /* Will try with saving the whole buffer directly
         float firstWindow[];
@@ -539,6 +584,10 @@ public class SoniTalkDecoder {
             lastWindow = historyBuffer.getLastWindow(analysisWinLen);
         }
         */
+        float[] analysisHistoryBuffer;
+        synchronized (historyBuffer) {
+            analysisHistoryBuffer = historyBuffer.getArray();
+        }
 
 
         float firstWindow[] = new float[analysisWinLen];

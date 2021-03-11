@@ -220,7 +220,7 @@ public final class ReedSolomon<E> {
 				throw new AssertionError();
 			Log.e("test", "RS code correction");
 			codeword = newCodeword;
-//			return null;//return null to see if this fixes the 'stray id' problem
+			return null;//return null to see if this fixes the 'stray id' problem
 		}
 		
 		// At this point, all syndromes are zero.
