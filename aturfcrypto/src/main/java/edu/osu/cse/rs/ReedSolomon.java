@@ -42,6 +42,7 @@ public final class ReedSolomon<E> {
 	
 	// The class object for the actual type parameter E, which is used in newArray(). Not null.
 	private Class<E> elementType;
+	private boolean corrected = false;
 	
 	
 	
@@ -219,13 +220,18 @@ public final class ReedSolomon<E> {
 			if (!areAllZero(newSyndromes))
 				throw new AssertionError();
 			Log.e("test", "RS code correction");
+			corrected = true;
 			codeword = newCodeword;
-			return null;//return null to see if this fixes the 'stray id' problem
+//			return null;//return null to see if this fixes the 'stray id' problem
 		}
 		
 		// At this point, all syndromes are zero.
 		// Extract the message part of the codeword
 		return Arrays.copyOfRange(codeword, eccLen, codeword.length);
+	}
+
+	public boolean getCorrected() {
+		return corrected;
 	}
 	
 	

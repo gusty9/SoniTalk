@@ -15,6 +15,8 @@ public class RSUtils {
 
     static final BinaryField field = new BinaryField(0x11D);
 
+    static boolean corrected = false;
+
     /**
      * @param hex
      * @param verify
@@ -48,11 +50,16 @@ public class RSUtils {
         for (Integer k : raw) {
             result.append(Integer.toHexString((k & 0xf0) >>> 4)).append(Integer.toHexString(k & 0x0f));
         }
-
+        corrected = rs.getCorrected();
 
         return result.toString().toUpperCase();
     }
 
+    public static boolean getCorrected() {
+        boolean temp = corrected;
+        corrected = false;
+        return temp;
+    }
 
     public static String getEDC(String x) {
 

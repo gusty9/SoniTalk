@@ -31,15 +31,17 @@ public class AudioController {
     private ArrayList<SoniTalkDecoder> decoders;
     private ChannelAnalyzer channelAnalyzer;
     private ExecutorService executor;
+    private DynamicConfiguration configuration;
 
     /**
      */
-    public AudioController(List<SoniTalkDecoder> decoders, ChannelAnalyzer channelAnalyzer) {
+    public AudioController(List<SoniTalkDecoder> decoders, ChannelAnalyzer channelAnalyzer, DynamicConfiguration configurations) {
         this.isAnalyzing = false;
 //        this.decoder = decoder;
         this.channelAnalyzer = channelAnalyzer;
         executor = Executors.newSingleThreadExecutor();
         this.decoders = new ArrayList<>(decoders);
+        this.configuration = configurations;
     }
 
     /**
@@ -77,8 +79,18 @@ public class AudioController {
                                 channelAnalyzer.analyzeSamples(currentData);
                             }
                         });
-                        for (SoniTalkDecoder decoder : decoders) {
-                            decoder.passSamples(currentData);
+
+                        //only decoder on this and this + 1 config to avoid RS errors
+                        int lowerBound = configuration.getCurrentConfigIndex();
+                        int upperBound = decoders.size();
+                        if (lowerBound == 2) {
+                            lowerBound++;
+                        } else if (lowerBound == 0) {
+                            upperBound = 3;
+                        }
+
+                        for (int i = lowerBound; i < upperBound; i++) {
+                            decoders.get(i).passSamples(currentData);
                         }
                     }
                     if (Thread.currentThread().isInterrupted()) {

@@ -57,7 +57,7 @@ public class ChannelAnalyzer {
         bucketCenterFreq = new int[]{18575, 19955, 21335};;
         smoothingCounter = new long[]{0,0,0};
         holdTimer = new long[]{generateRandom(750, 1250), generateRandom(750, 1250),generateRandom(750, 1250)};
-        varianceThresholds = new double[]{2.5E-5, 2.5E-5, 2.5E-5};
+        varianceThresholds = new double[]{3.0E-5, 3.0E-5, 2.7E-5};
         bucketWidth = 1000;//?
         historyBuffer = new CircularArray(dynamicConfiguration.getConfigurations().get(0).get(0).getAnalysisWinLen(GaltonChat.SAMPLE_RATE) *6);
     }

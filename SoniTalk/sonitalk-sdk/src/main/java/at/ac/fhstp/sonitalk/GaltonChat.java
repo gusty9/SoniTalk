@@ -13,6 +13,7 @@ import java.util.Random;
 
 import at.ac.fhstp.sonitalk.utils.CircularArray;
 import at.ac.fhstp.sonitalk.utils.DecoderUtils;
+import at.ac.fhstp.sonitalk.utils.RSUtils;
 import edu.emory.mathcs.backport.java.util.Arrays;
 import marytts.util.math.ComplexArray;
 import marytts.util.math.Hilbert;
@@ -39,7 +40,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     //minimum readable frequency = SAMPLE_RATE/2 = 22050
     public static final int SAMPLE_RATE = 44100;//should work with ~most~ devices
     private final int SONITALK_SENDER_REQUEST_CODE = 2;//todo uhh not sure what the request code is for but 2 works
-    private final int ATTEMPT_RESEND_THRESHOLD = 1;
+    private final int ATTEMPT_RESEND_THRESHOLD = 2;
 
     //configuration variables
 //    private GaltonChatDecoder decoder;
@@ -97,7 +98,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
                 decoders.add(decoder);
             }
         }
-        audioController = new AudioController(decoders, channelAnalyzer);
+        audioController = new AudioController(decoders, channelAnalyzer, dynamicConfiguration);
 
     }
 
@@ -127,8 +128,9 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
             //all channels were occupied. Do something?
             Log.e(TAG, "all channels are occupied, attempting to resend message");
             resendRunnable = new AttemptResendRunnable(message);
-            int messageDur = dynamicConfiguration.getCurrentMessageLength();
-            delayedTaskHandler.postDelayed(resendRunnable, generateRandom(messageDur, (int) Math.round(2*messageDur)));//maybe not over 2
+            int lowerBound = (int)Math.round(dynamicConfiguration.getMessageLength(dynamicConfiguration.getCurrentConfigIndex()) * 1.0);
+            int upperBound = (int)Math.round(dynamicConfiguration.getMessageLength(dynamicConfiguration.getCurrentConfigIndex()) * 2.0);
+            delayedTaskHandler.postDelayed(resendRunnable, generateRandom(lowerBound, upperBound));//maybe not over 2
             attemptResendCounter++;
         }
     }
@@ -163,7 +165,9 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     @Override
     public void onMessageReceived(SoniTalkMessage receivedMessage, int configIndex, int channelIndex) {
         Log.e(TAG, receivedMessage.getDecodedMessage() + " config " + configIndex + " channel " + channelIndex);
-        dynamicConfiguration.onMessageReceived(configIndex);
+        if (!RSUtils.getCorrected()) {
+            dynamicConfiguration.onMessageReceived(configIndex); //only update the config message if we can confirm it was a real message
+        }
         callback.onMessageReceived(receivedMessage.getDecodedMessage(), configIndex, channelIndex);
         //todo sometimes messages that do not exist are being decoded. Refine that more or add extra error checking?
     }
