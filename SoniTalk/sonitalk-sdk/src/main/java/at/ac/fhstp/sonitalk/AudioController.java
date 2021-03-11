@@ -55,6 +55,13 @@ public class AudioController {
                 short tempBuffer[] = new short[neededBytes];
                 final float currentData[] = new float[neededBytes];
 
+                try {
+                    android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO); //maybe this helps?
+                } catch (IllegalArgumentException | SecurityException ex) {
+                    // Ignore
+                    Log.e(GaltonChat.TAG, "error");
+                }
+
                 while (run) {
 
                     readBytes = audioRecord.read(tempBuffer, 0, neededBytes);
@@ -75,6 +82,7 @@ public class AudioController {
                 }
             }
         };
+        analysisThread.setPriority(Thread.MAX_PRIORITY);
         analysisThread.start();
         isAnalyzing = true;
     }

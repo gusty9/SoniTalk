@@ -36,7 +36,7 @@ public class GaltonChatTest {
     }
 
     public void onSuccessfulMessageSent() {
-        delayedHandler.postDelayed(sendMessage, generateRandom(8000, 16000));//send the next message random between 8-16 seconds
+        delayedHandler.postDelayed(sendMessage, generateRandom(10000, 20000));//send the next message random between 8-16 seconds
     }
 
     private class SendMessageRunnable implements Runnable {

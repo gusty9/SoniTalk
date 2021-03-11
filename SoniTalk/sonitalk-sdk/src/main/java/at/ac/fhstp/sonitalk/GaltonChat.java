@@ -57,7 +57,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
     private MessageCallback callback;
     private Handler delayedTaskHandler;
     private int attemptResendCounter;
-    private Random random;
+    private static Random random;
     private AttemptResendRunnable resendRunnable;
 
     /**
@@ -88,7 +88,7 @@ public class GaltonChat implements SoniTalkDecoder.MessageListener {
         this.random = new Random(System.nanoTime());
 
         //decoding variables
-        decoder = new GaltonChatDecoder(configs, this);
+        decoder = new GaltonChatDecoder(dynamicConfiguration, this);
         audioController = new AudioController(decoder, channelAnalyzer);
 
     }

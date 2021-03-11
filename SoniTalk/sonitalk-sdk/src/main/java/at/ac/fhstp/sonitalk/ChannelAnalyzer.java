@@ -1,22 +1,13 @@
 package at.ac.fhstp.sonitalk;
 
-import android.os.Handler;
-import android.util.Log;
-
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 
 import at.ac.fhstp.sonitalk.utils.CircularArray;
 import at.ac.fhstp.sonitalk.utils.DecoderUtils;
-import at.ac.fhstp.sonitalk.utils.HammingWindow;
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D;
-import marytts.util.math.ComplexArray;
-import marytts.util.math.Hilbert;
 import uk.me.berndporr.iirj.Butterworth;
 
 /**
@@ -33,11 +24,13 @@ public class ChannelAnalyzer {
     private DynamicConfiguration dynamicConfiguration;
     private int[] bucketCenterFreq;
     private long[] smoothingCounter;
+    private long[] holdTimer;
     private double[] varianceThresholds;
     private int bucketWidth;
     private int analysisWindowLength;
     private CircularArray historyBuffer;
     private final int TIMER_FOR_SMOOTHING = 750; //has to be 'low' for .5 sec
+    private Random random;
 
     private ChannelListener callback;
 
@@ -58,8 +51,10 @@ public class ChannelAnalyzer {
             Arrays.fill(available, true);
             this.channelsAvailable.add(available);
         }
+        random = new Random(System.currentTimeMillis());
         bucketCenterFreq = new int[]{18575, 19955, 21335};;
         smoothingCounter = new long[]{0,0,0};
+        holdTimer = new long[]{generateRandom(750, 1250), generateRandom(750, 1250),generateRandom(750, 1250)};
         varianceThresholds = new double[]{2.2E-5, 2.2E-5, 2.2E-5};
         bucketWidth = 1000;//?
         historyBuffer = new CircularArray(dynamicConfiguration.getConfigurations().get(0).get(0).getAnalysisWinLen(GaltonChat.SAMPLE_RATE) *6);
@@ -119,7 +114,7 @@ public class ChannelAnalyzer {
             if (variance > varianceThresholds[i]) {
                 bucketAvailable[i] = false;
                 smoothingCounter[i] = System.currentTimeMillis();
-            } else if (System.currentTimeMillis() - smoothingCounter[i] < TIMER_FOR_SMOOTHING) {
+            } else if (System.currentTimeMillis() - smoothingCounter[i] < holdTimer[i]) {
                 bucketAvailable[i] = false;
             }
 //            Log.e(GaltonChat.TAG, "Bucket " + i + " var: " + variance);
@@ -268,5 +263,9 @@ public class ChannelAnalyzer {
                 break;
         }
         return occupiedIndices;
+    }
+
+    private long generateRandom(int min, int max) {
+        return random.nextInt((max - min) + 1) + min;
     }
 }

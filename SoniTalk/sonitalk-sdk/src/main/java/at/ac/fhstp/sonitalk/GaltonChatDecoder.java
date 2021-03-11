@@ -26,15 +26,15 @@ public class GaltonChatDecoder {
     private SoniTalkDecoder.MessageListener messageListener;
     private final CircularArray historyBuffer;
     private int[] bytesLeftRead;
-    private int bytesRead;
+    private DynamicConfiguration dynamicConfiguration;
 
 
 
-    public GaltonChatDecoder(List<List<SoniTalkConfig>> configs, SoniTalkDecoder.MessageListener messageListener) {
+    public GaltonChatDecoder(DynamicConfiguration configuration, SoniTalkDecoder.MessageListener messageListener) {
         this.configList = new ArrayList<>();
-        for (int i = 0; i < configs.size(); i++) {
-            for (int j = 0; j < configs.get(i).size(); j++) {
-                configList.add(configs.get(i).get(j));
+        for (int i = 0; i < configuration.getConfigurations().size(); i++) {
+            for (int j = 0; j < configuration.getConfigurations().get(i).size(); j++) {
+                configList.add(configuration.getConfigurations().get(i).get(j));
             }
         }
         threadAnalyzeExecutor =  Executors.newSingleThreadExecutor();
@@ -43,14 +43,23 @@ public class GaltonChatDecoder {
         Arrays.fill(isDecoding, false);
         Arrays.fill(sync, new Object());
         this.messageListener = messageListener;
-        historyBuffer = new CircularArray(configs.get(configs.size()-1).get(configs.get(configs.size()-1).size()-1).getHistoryBufferSize(GaltonChat.SAMPLE_RATE));
+        historyBuffer = new CircularArray(configList.get(configList.size()-1).getHistoryBufferSize(GaltonChat.SAMPLE_RATE));
         bytesLeftRead = new int[configList.size()];
+        this.dynamicConfiguration = configuration;
     }
 
     public void analyzeSamples(float[] analysisHistoryBuffer) {
         historyBuffer.add(analysisHistoryBuffer);
 
-        for (int i = 0; i < configList.size(); i++) {
+        int lowerBound = dynamicConfiguration.getCurrentConfigIndex();
+        int upperBound = configList.size();
+        if (lowerBound == 2) {
+            lowerBound++;//convert to the right index
+        }
+        if (lowerBound == 0) {
+            upperBound = 3;
+        }
+        for (int i = lowerBound; i < upperBound; i++) {
 
             int analysisWinLen = configList.get(i).getAnalysisWinLen(GaltonChat.SAMPLE_RATE);
             final float[] buffer = historyBuffer.getLastWindow(configList.get(i).getHistoryBufferSize(GaltonChat.SAMPLE_RATE));
@@ -118,7 +127,8 @@ public class GaltonChatDecoder {
         int analysisWinStep = (int)Math.round((float) config.getAnalysisWinLen(GaltonChat.SAMPLE_RATE)/ stepFactor);
 
         int overlapForSpectrogramInSamples = winLenForSpectrogramInSamples - analysisWinStep;
-        int overlapFactor = Math.round((float) winLenForSpectrogramInSamples / (winLenForSpectrogramInSamples - overlapForSpectrogramInSamples));
+//        int overlapFactor = Math.round((float) winLenForSpectrogramInSamples / (winLenForSpectrogramInSamples - overlapForSpectrogramInSamples));
+        int overlapFactor = 32;
         int nbWinLenForSpectrogram = Math.round(overlapFactor * (float) config.getHistoryBufferSize(GaltonChat.SAMPLE_RATE) / (float) winLenForSpectrogramInSamples);
         double[][] historyBufferDouble = new double[nbWinLenForSpectrogram][winLenForSpectrogramInSamples];
         for(int j = 0; j<historyBufferDouble.length;j++ ) {
